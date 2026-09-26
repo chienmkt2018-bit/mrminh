@@ -1,4 +1,4 @@
-// frontend/assets/js/app.js - Đã hoàn thiện Trang Quản Lý Đề Thi & Đăng Ký Học Viên
+// frontend/assets/js/app.js - Đã chuẩn hóa mã nguồn sạch lỗi cú pháp
 
 export const API_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
     ? 'http://localhost:3000/api'
@@ -7,14 +7,12 @@ export const API_URL = window.location.hostname === 'localhost' || window.locati
 let currentUser = JSON.parse(localStorage.getItem('currentUser')) || null;
 let currentAuthToken = localStorage.getItem('token') || null;
 
-// Biến lưu danh sách câu hỏi tạm thời khi Admin tạo đề thi mới
 let tempQuestions = [];
 
 document.addEventListener('DOMContentLoaded', () => {
     renderAppView();
 });
 
-// Dispatcher chính của hệ thống SPA
 export function renderAppView() {
     const appView = document.getElementById('app-view');
     const userInfoHeader = document.getElementById('user-info');
@@ -40,33 +38,24 @@ export function renderAppView() {
     }
 }
 
-// --- 1. GIAO DIỆN ĐĂNG NHẬP ---
 function renderLoginView(container) {
     container.innerHTML = `
         <div class="max-w-md mx-auto bg-white dark:bg-gray-800 p-8 rounded-xl shadow-lg mt-10 border dark:border-gray-700">
             <h2 class="text-2xl font-bold mb-6 text-center text-gray-800 dark:text-white">Xin mời đăng nhập</h2>
-            
             <div id="auth-message" class="hidden mb-4 p-3 rounded-lg text-sm"></div>
-
             <form id="login-form" class="space-y-4">
                 <div>
                     <label class="block text-sm font-medium mb-1">Tên đăng nhập</label>
-                    <input type="text" id="username" placeholder="Nhập tên đăng nhập" required 
-                           class="w-full px-4 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 outline-none focus:ring-2 focus:ring-blue-500">
+                    <input type="text" id="username" placeholder="Nhập tên đăng nhập" required class="w-full px-4 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 outline-none focus:ring-2 focus:ring-blue-500">
                 </div>
                 <div>
                     <label class="block text-sm font-medium mb-1">Mật khẩu</label>
-                    <input type="password" id="password" placeholder="Nhập mật khẩu" required 
-                           class="w-full px-4 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 outline-none focus:ring-2 focus:ring-blue-500">
+                    <input type="password" id="password" placeholder="Nhập mật khẩu" required class="w-full px-4 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 outline-none focus:ring-2 focus:ring-blue-500">
                 </div>
-                <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 rounded-lg transition shadow-md">
-                    Đăng Nhập
-                </button>
+                <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 rounded-lg transition shadow-md">Đăng Nhập</button>
             </form>
-
             <div class="mt-6 text-center text-sm text-gray-600 dark:text-gray-400">
-                Chưa có tài khoản học viên? 
-                <button id="go-to-register" class="text-blue-600 dark:text-blue-400 font-semibold hover:underline ml-1">Đăng ký ngay</button>
+                Chưa có tài khoản học viên? <button id="go-to-register" class="text-blue-600 dark:text-blue-400 font-semibold hover:underline ml-1">Đăng ký ngay</button>
             </div>
         </div>
     `;
@@ -75,39 +64,28 @@ function renderLoginView(container) {
     document.getElementById('go-to-register').addEventListener('click', () => renderRegisterView(container));
 }
 
-// --- 2. GIAO DIỆN ĐĂNG KÝ HỌC VIÊN ---
 function renderRegisterView(container) {
     container.innerHTML = `
         <div class="max-w-md mx-auto bg-white dark:bg-gray-800 p-8 rounded-xl shadow-lg mt-10 border dark:border-gray-700">
             <h2 class="text-2xl font-bold mb-2 text-center text-gray-800 dark:text-white">Đăng Ký Học Viên</h2>
-            <p class="text-sm text-gray-500 dark:text-gray-400 mb-6 text-center">Tạo tài khoản mới để tham gia hệ thống học tập.</p>
-            
             <div id="auth-message" class="hidden mb-4 p-3 rounded-lg text-sm"></div>
-
             <form id="register-form" class="space-y-4">
                 <div>
                     <label class="block text-sm font-medium mb-1">Họ và tên</label>
-                    <input type="text" id="reg-fullname" placeholder="Nguyễn Văn A" required 
-                           class="w-full px-4 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 outline-none focus:ring-2 focus:ring-blue-500">
+                    <input type="text" id="reg-fullname" placeholder="Nguyễn Văn A" required class="w-full px-4 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 outline-none focus:ring-2 focus:ring-blue-500">
                 </div>
                 <div>
                     <label class="block text-sm font-medium mb-1">Tên đăng nhập</label>
-                    <input type="text" id="reg-username" placeholder="nguyenvana" required 
-                           class="w-full px-4 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 outline-none focus:ring-2 focus:ring-blue-500">
+                    <input type="text" id="reg-username" placeholder="nguyenvana" required class="w-full px-4 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 outline-none focus:ring-2 focus:ring-blue-500">
                 </div>
                 <div>
                     <label class="block text-sm font-medium mb-1">Mật khẩu</label>
-                    <input type="password" id="reg-password" placeholder="Mật khẩu của bạn" required 
-                           class="w-full px-4 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 outline-none focus:ring-2 focus:ring-blue-500">
+                    <input type="password" id="reg-password" placeholder="Mật khẩu của bạn" required class="w-full px-4 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 outline-none focus:ring-2 focus:ring-blue-500">
                 </div>
-                <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-lg transition shadow-md">
-                    Xác Nhận Đăng Ký
-                </button>
+                <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-lg transition shadow-md">Xác Nhận Đăng Ký</button>
             </form>
-
             <div class="mt-6 text-center text-sm text-gray-600 dark:text-gray-400">
-                Đã có tài khoản? 
-                <button id="go-to-login" class="text-blue-600 dark:text-blue-400 font-semibold hover:underline ml-1">Đăng nhập</button>
+                Đã có tài khoản? <button id="go-to-login" class="text-blue-600 dark:text-blue-400 font-semibold hover:underline ml-1">Đăng nhập</button>
             </div>
         </div>
     `;
@@ -116,11 +94,9 @@ function renderRegisterView(container) {
     document.getElementById('go-to-login').addEventListener('click', () => renderLoginView(container));
 }
 
-// --- 3. BẢNG ĐIỀU KHIỂN ADMIN & QUẢN LÝ ĐỀ THI ---
 function renderAdminDashboard(container) {
     container.innerHTML = `
         <div class="space-y-6">
-            <!-- Header Admin -->
             <div class="bg-gray-800 text-white rounded-xl p-6 shadow-md flex justify-between items-center">
                 <div>
                     <h2 class="text-2xl font-bold flex items-center gap-2"><i class="fa-solid fa-user-shield text-amber-400"></i> Quản Trị Hệ Thống Đề Thi</h2>
@@ -131,10 +107,8 @@ function renderAdminDashboard(container) {
                 </button>
             </div>
 
-            <!-- Khung Thông Báo -->
             <div id="admin-message" class="hidden p-4 rounded-lg text-sm"></div>
 
-            <!-- Bảng Lọc Đề Thi -->
             <div class="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-md border dark:border-gray-700 flex flex-wrap gap-4 items-center justify-between">
                 <div class="flex gap-4 flex-wrap">
                     <div>
@@ -163,21 +137,17 @@ function renderAdminDashboard(container) {
                 </button>
             </div>
 
-            <!-- Khu Vực Danh Sách Đề Thi -->
             <div id="exam-list-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 <div class="col-span-full text-center py-8 text-gray-500">Đang tải danh sách đề thi...</div>
             </div>
         </div>
 
-        <!-- MODAL TẠO ĐỀ THI MỚI -->
         <div id="create-exam-modal" class="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 hidden">
             <div class="bg-white dark:bg-gray-800 rounded-2xl max-w-2xl w-full p-6 shadow-2xl max-h-[90vh] overflow-y-auto relative border dark:border-gray-700">
                 <button id="close-modal-btn" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 text-xl font-bold">✕</button>
-                
                 <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
                     <i class="fa-solid fa-file-circle-plus text-blue-600"></i> Tạo Đề Thi Mới
                 </h3>
-
                 <form id="create-exam-form" class="space-y-4">
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
@@ -208,13 +178,10 @@ function renderAdminDashboard(container) {
                         </div>
                     </div>
 
-                    <!-- DANH SÁCH CÂU HỎI -->
                     <div class="border-t pt-4 dark:border-gray-700">
                         <div class="flex justify-between items-center mb-3">
                             <h4 class="font-bold text-base text-gray-800 dark:text-gray-200">Danh sách câu hỏi (<span id="question-count">0</span>)</h4>
-                            <button type="button" id="btn-add-question-prompt" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-3 py-1.5 rounded-lg font-semibold transition">
-                                + Thêm câu hỏi
-                            </button>
+                            <button type="button" id="btn-add-question-prompt" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-3 py-1.5 rounded-lg font-semibold transition">+ Thêm câu hỏi</button>
                         </div>
                         <div id="questions-list" class="space-y-3 max-h-60 overflow-y-auto pr-1">
                             <p class="text-sm text-gray-400 italic">Chưa có câu hỏi nào. Nhấn "+ Thêm câu hỏi" để bắt đầu.</p>
@@ -230,12 +197,10 @@ function renderAdminDashboard(container) {
         </div>
     `;
 
-    // Khởi tạo các sự kiện cho Admin
     setupAdminEvents();
     fetchExamsList();
 }
 
-// Lấy danh sách đề thi từ API Backend
 async function fetchExamsList() {
     const container = document.getElementById('exam-list-container');
     const subject = document.getElementById('filter-subject')?.value || '';
@@ -277,7 +242,6 @@ async function fetchExamsList() {
     }
 }
 
-// Xử lý sự kiện trong trang Admin
 function setupAdminEvents() {
     const modal = document.getElementById('create-exam-modal');
     const openBtn = document.getElementById('open-create-exam-btn');
@@ -299,7 +263,6 @@ function setupAdminEvents() {
     filterGrade?.addEventListener('change', fetchExamsList);
     reloadBtn?.addEventListener('click', fetchExamsList);
 
-    // Bấm nút thêm câu hỏi
     document.getElementById('btn-add-question-prompt')?.addEventListener('click', () => {
         const qText = prompt('Nhập nội dung câu hỏi:');
         if (!qText) return;
@@ -321,7 +284,6 @@ function setupAdminEvents() {
         }
     });
 
-    // Form Submit Tạo Đề Thi
     document.getElementById('create-exam-form')?.addEventListener('submit', async (e) => {
         e.preventDefault();
         const examCode = document.getElementById('exam-code').value.trim();
@@ -364,7 +326,6 @@ function setupAdminEvents() {
     });
 }
 
-// Render các câu hỏi tạm thời trong Modal
 function renderTempQuestions() {
     const list = document.getElementById('questions-list');
     const countSpan = document.getElementById('question-count');
@@ -387,13 +348,11 @@ function renderTempQuestions() {
     `).join('');
 }
 
-// Xóa câu hỏi tạm thời khỏi danh sách
 window.removeTempQuestion = function(index) {
     tempQuestions.splice(index, 1);
     renderTempQuestions();
 };
 
-// Xóa đề thi khỏi hệ thống
 window.deleteExam = async function(examCode) {
     if (!confirm(`Bạn có chắc chắn muốn xóa đề thi ${examCode} không?`)) return;
 
@@ -410,7 +369,6 @@ window.deleteExam = async function(examCode) {
     }
 };
 
-// --- 4. GIAO DIỆN HỌC VIÊN ---
 function renderStudentDashboard(container) {
     container.innerHTML = `
         <div class="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl p-6 text-white shadow-lg flex justify-between items-center mt-6">
@@ -422,7 +380,6 @@ function renderStudentDashboard(container) {
     `;
 }
 
-// --- 5. HÀM XỬ LÝ CHUNG ---
 async function handleLoginSubmit(e) {
     e.preventDefault();
     const username = document.getElementById('username').value.trim();

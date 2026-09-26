@@ -1,6 +1,5 @@
-// frontend/assets/js/app.js - Quản lý giao diện SPA, Đăng nhập & Đăng ký học viên
+// frontend/assets/js/app.js - Đã hoàn thiện Trang Quản Lý Đề Thi & Đăng Ký Học Viên
 
-// Xác định API URL linh hoạt giữa môi trường Localhost và Render Cloud
 export const API_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
     ? 'http://localhost:3000/api'
     : '/api';
@@ -8,12 +7,14 @@ export const API_URL = window.location.hostname === 'localhost' || window.locati
 let currentUser = JSON.parse(localStorage.getItem('currentUser')) || null;
 let currentAuthToken = localStorage.getItem('token') || null;
 
-// Khởi chạy ứng dụng khi DOM đã load xong
+// Biến lưu danh sách câu hỏi tạm thời khi Admin tạo đề thi mới
+let tempQuestions = [];
+
 document.addEventListener('DOMContentLoaded', () => {
     renderAppView();
 });
 
-// Điều phối hiển thị các View chính dựa trên trạng thái đăng nhập
+// Dispatcher chính của hệ thống SPA
 export function renderAppView() {
     const appView = document.getElementById('app-view');
     const userInfoHeader = document.getElementById('user-info');
@@ -21,12 +22,12 @@ export function renderAppView() {
 
     if (!currentUser) {
         if (userInfoHeader) userInfoHeader.innerHTML = '';
-        renderLoginView(appView); // Mặc định hiển thị form đăng nhập
+        renderLoginView(appView);
     } else {
         if (userInfoHeader) {
             userInfoHeader.innerHTML = `
-                <span>Xin chào, <b>${currentUser.username}</b></span>
-                <button id="logout-btn" class="ml-3 text-red-500 hover:text-red-700 font-semibold text-xs">Đăng xuất</button>
+                <span class="mr-2">Xin chào, <b class="text-blue-600 dark:text-blue-400">${currentUser.fullname || currentUser.username}</b> (${currentUser.role === 'admin' ? 'Admin 👑' : 'Học viên 🎓'})</span>
+                <button id="logout-btn" class="text-red-500 hover:text-red-700 font-semibold text-xs border border-red-200 px-2 py-1 rounded">Đăng xuất</button>
             `;
             document.getElementById('logout-btn').addEventListener('click', handleLogout);
         }
@@ -42,8 +43,8 @@ export function renderAppView() {
 // --- 1. GIAO DIỆN ĐĂNG NHẬP ---
 function renderLoginView(container) {
     container.innerHTML = `
-        <div class="max-w-md mx-auto bg-white dark:bg-gray-800 p-8 rounded-xl shadow-lg mt-10">
-            <h2 class="text-2xl font-bold mb-6 text-center">Xin mời đăng nhập</h2>
+        <div class="max-w-md mx-auto bg-white dark:bg-gray-800 p-8 rounded-xl shadow-lg mt-10 border dark:border-gray-700">
+            <h2 class="text-2xl font-bold mb-6 text-center text-gray-800 dark:text-white">Xin mời đăng nhập</h2>
             
             <div id="auth-message" class="hidden mb-4 p-3 rounded-lg text-sm"></div>
 
@@ -70,18 +71,16 @@ function renderLoginView(container) {
         </div>
     `;
 
-    // Gắn sự kiện xử lý đăng nhập
     document.getElementById('login-form').addEventListener('submit', handleLoginSubmit);
-    // Chuyển sang màn hình đăng ký
     document.getElementById('go-to-register').addEventListener('click', () => renderRegisterView(container));
 }
 
-// --- 2. GIAO DIỆN ĐĂNG KÝ HỌC VIÊN MỚI ---
+// --- 2. GIAO DIỆN ĐĂNG KÝ HỌC VIÊN ---
 function renderRegisterView(container) {
     container.innerHTML = `
-        <div class="max-w-md mx-auto bg-white dark:bg-gray-800 p-8 rounded-xl shadow-lg mt-10">
-            <h2 class="text-2xl font-bold mb-2 text-center">Đăng Ký Học Viên</h2>
-            <p class="text-sm text-gray-500 dark:text-gray-400 mb-6 text-center">Tạo tài khoản mới để tham gia học tập.</p>
+        <div class="max-w-md mx-auto bg-white dark:bg-gray-800 p-8 rounded-xl shadow-lg mt-10 border dark:border-gray-700">
+            <h2 class="text-2xl font-bold mb-2 text-center text-gray-800 dark:text-white">Đăng Ký Học Viên</h2>
+            <p class="text-sm text-gray-500 dark:text-gray-400 mb-6 text-center">Tạo tài khoản mới để tham gia hệ thống học tập.</p>
             
             <div id="auth-message" class="hidden mb-4 p-3 rounded-lg text-sm"></div>
 
@@ -98,7 +97,7 @@ function renderRegisterView(container) {
                 </div>
                 <div>
                     <label class="block text-sm font-medium mb-1">Mật khẩu</label>
-                    <input type="password" id="reg-password" placeholder="Ít nhất 6 ký tự" required 
+                    <input type="password" id="reg-password" placeholder="Mật khẩu của bạn" required 
                            class="w-full px-4 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 outline-none focus:ring-2 focus:ring-blue-500">
                 </div>
                 <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-lg transition shadow-md">
@@ -113,15 +112,317 @@ function renderRegisterView(container) {
         </div>
     `;
 
-    // Gắn sự kiện xử lý đăng ký gửi lên Backend API
     document.getElementById('register-form').addEventListener('submit', handleRegisterSubmit);
-    // Quay lại màn hình đăng nhập
     document.getElementById('go-to-login').addEventListener('click', () => renderLoginView(container));
 }
 
-// --- 3. XỬ LÝ LOGIC API ---
+// --- 3. BẢNG ĐIỀU KHIỂN ADMIN & QUẢN LÝ ĐỀ THI ---
+function renderAdminDashboard(container) {
+    container.innerHTML = `
+        <div class="space-y-6">
+            <!-- Header Admin -->
+            <div class="bg-gray-800 text-white rounded-xl p-6 shadow-md flex justify-between items-center">
+                <div>
+                    <h2 class="text-2xl font-bold flex items-center gap-2"><i class="fa-solid fa-user-shield text-amber-400"></i> Quản Trị Hệ Thống Đề Thi</h2>
+                    <p class="text-gray-300 text-sm mt-1">Tạo, phân loại theo môn (Toán, Anh, Văn) và lớp học (Lớp 1 - Lớp 5).</p>
+                </div>
+                <button id="open-create-exam-btn" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-semibold transition flex items-center gap-2 shadow">
+                    <i class="fa-solid fa-plus"></i> Tạo Đề Thi Mới
+                </button>
+            </div>
 
-// Xử lý gửi yêu cầu Đăng nhập
+            <!-- Khung Thông Báo -->
+            <div id="admin-message" class="hidden p-4 rounded-lg text-sm"></div>
+
+            <!-- Bảng Lọc Đề Thi -->
+            <div class="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-md border dark:border-gray-700 flex flex-wrap gap-4 items-center justify-between">
+                <div class="flex gap-4 flex-wrap">
+                    <div>
+                        <label class="text-xs font-semibold text-gray-500 dark:text-gray-400 block mb-1">Môn học</label>
+                        <select id="filter-subject" class="px-3 py-1.5 border rounded-lg dark:bg-gray-700 dark:border-gray-600 text-sm">
+                            <option value="">-- Tất cả các môn --</option>
+                            <option value="Toán">Toán</option>
+                            <option value="Anh">Anh</option>
+                            <option value="Văn">Văn</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-xs font-semibold text-gray-500 dark:text-gray-400 block mb-1">Lớp học</label>
+                        <select id="filter-grade" class="px-3 py-1.5 border rounded-lg dark:bg-gray-700 dark:border-gray-600 text-sm">
+                            <option value="">-- Tất cả các lớp --</option>
+                            <option value="Lớp 1">Lớp 1</option>
+                            <option value="Lớp 2">Lớp 2</option>
+                            <option value="Lớp 3">Lớp 3</option>
+                            <option value="Lớp 4">Lớp 4</option>
+                            <option value="Lớp 5">Lớp 5</option>
+                        </select>
+                    </div>
+                </div>
+                <button id="btn-reload-exams" class="text-blue-600 hover:text-blue-800 text-sm font-semibold flex items-center gap-1">
+                    <i class="fa-solid fa-rotate"></i> Làm mới danh sách
+                </button>
+            </div>
+
+            <!-- Khu Vực Danh Sách Đề Thi -->
+            <div id="exam-list-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div class="col-span-full text-center py-8 text-gray-500">Đang tải danh sách đề thi...</div>
+            </div>
+        </div>
+
+        <!-- MODAL TẠO ĐỀ THI MỚI -->
+        <div id="create-exam-modal" class="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+            <div class="bg-white dark:bg-gray-800 rounded-2xl max-w-2xl w-full p-6 shadow-2xl max-h-[90vh] overflow-y-auto relative border dark:border-gray-700">
+                <button id="close-modal-btn" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 text-xl font-bold">✕</button>
+                
+                <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                    <i class="fa-solid fa-file-circle-plus text-blue-600"></i> Tạo Đề Thi Mới
+                </h3>
+
+                <form id="create-exam-form" class="space-y-4">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium mb-1">Mã đề thi <span class="text-red-500">*</span></label>
+                            <input type="text" id="exam-code" placeholder="VD: TOAN101" required class="w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-1">Môn học <span class="text-red-500">*</span></label>
+                            <select id="exam-subject" required class="w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 text-sm">
+                                <option value="Toán">Toán</option>
+                                <option value="Anh">Anh</option>
+                                <option value="Văn">Văn</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-1">Khối Lớp <span class="text-red-500">*</span></label>
+                            <select id="exam-grade" required class="w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 text-sm">
+                                <option value="Lớp 1">Lớp 1</option>
+                                <option value="Lớp 2">Lớp 2</option>
+                                <option value="Lớp 3">Lớp 3</option>
+                                <option value="Lớp 4">Lớp 4</option>
+                                <option value="Lớp 5">Lớp 5</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-1">Thời gian làm bài (Phút)</label>
+                            <input type="number" id="exam-time" value="30" min="5" max="180" class="w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 text-sm">
+                        </div>
+                    </div>
+
+                    <!-- DANH SÁCH CÂU HỎI -->
+                    <div class="border-t pt-4 dark:border-gray-700">
+                        <div class="flex justify-between items-center mb-3">
+                            <h4 class="font-bold text-base text-gray-800 dark:text-gray-200">Danh sách câu hỏi (<span id="question-count">0</span>)</h4>
+                            <button type="button" id="btn-add-question-prompt" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-3 py-1.5 rounded-lg font-semibold transition">
+                                + Thêm câu hỏi
+                            </button>
+                        </div>
+                        <div id="questions-list" class="space-y-3 max-h-60 overflow-y-auto pr-1">
+                            <p class="text-sm text-gray-400 italic">Chưa có câu hỏi nào. Nhấn "+ Thêm câu hỏi" để bắt đầu.</p>
+                        </div>
+                    </div>
+
+                    <div class="pt-4 flex justify-end gap-3 border-t dark:border-gray-700">
+                        <button type="button" id="btn-cancel-modal" class="px-4 py-2 border rounded-lg text-sm hover:bg-gray-100 dark:hover:bg-gray-700">Hủy</button>
+                        <button type="submit" class="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg text-sm transition">Lưu Đề Thi</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    `;
+
+    // Khởi tạo các sự kiện cho Admin
+    setupAdminEvents();
+    fetchExamsList();
+}
+
+// Lấy danh sách đề thi từ API Backend
+async function fetchExamsList() {
+    const container = document.getElementById('exam-list-container');
+    const subject = document.getElementById('filter-subject')?.value || '';
+    const grade = document.getElementById('filter-grade')?.value || '';
+
+    if (!container) return;
+
+    try {
+        const res = await fetch(`${API_URL}/exams?subject=${encodeURIComponent(subject)}&grade=${encodeURIComponent(grade)}`);
+        const data = await res.json();
+
+        if (data.success && data.exams.length > 0) {
+            container.innerHTML = data.exams.map(exam => `
+                <div class="bg-white dark:bg-gray-800 rounded-xl p-5 shadow-md border border-gray-100 dark:border-gray-700 flex flex-col justify-between hover:shadow-lg transition">
+                    <div>
+                        <div class="flex justify-between items-start mb-3">
+                            <span class="px-2.5 py-1 bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 font-bold text-xs rounded-full">${exam.examCode}</span>
+                            <span class="px-2.5 py-1 bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300 font-semibold text-xs rounded-full">${exam.grade}</span>
+                        </div>
+                        <h3 class="font-bold text-lg text-gray-800 dark:text-white mb-2">${exam.title || 'Đề thi ' + exam.subject}</h3>
+                        <div class="text-xs text-gray-500 space-y-1 mb-4">
+                            <p><i class="fa-solid fa-book"></i> Môn: <b class="text-gray-700 dark:text-gray-300">${exam.subject}</b></p>
+                            <p><i class="fa-solid fa-clock"></i> Thời gian: <b>${exam.timeLimit} phút</b></p>
+                            <p><i class="fa-solid fa-circle-question"></i> Số câu hỏi: <b>${exam.questions ? exam.questions.length : 0} câu</b></p>
+                        </div>
+                    </div>
+                    <div class="pt-3 border-t dark:border-gray-700 flex justify-end">
+                        <button onclick="window.deleteExam('${exam.examCode}')" class="text-red-600 hover:text-red-800 text-xs font-semibold px-2 py-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20 transition">
+                            <i class="fa-solid fa-trash"></i> Xóa đề thi
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        } else {
+            container.innerHTML = `<div class="col-span-full text-center py-10 text-gray-400">Chưa có đề thi nào phù hợp với bộ lọc.</div>`;
+        }
+    } catch (e) {
+        container.innerHTML = `<div class="col-span-full text-center py-10 text-red-500">Không thể tải danh sách đề thi!</div>`;
+    }
+}
+
+// Xử lý sự kiện trong trang Admin
+function setupAdminEvents() {
+    const modal = document.getElementById('create-exam-modal');
+    const openBtn = document.getElementById('open-create-exam-btn');
+    const closeBtn = document.getElementById('close-modal-btn');
+    const cancelBtn = document.getElementById('btn-cancel-modal');
+    const filterSubject = document.getElementById('filter-subject');
+    const filterGrade = document.getElementById('filter-grade');
+    const reloadBtn = document.getElementById('btn-reload-exams');
+
+    openBtn?.addEventListener('click', () => {
+        tempQuestions = [];
+        renderTempQuestions();
+        modal?.classList.remove('hidden');
+    });
+
+    [closeBtn, cancelBtn].forEach(btn => btn?.addEventListener('click', () => modal?.classList.add('hidden')));
+
+    filterSubject?.addEventListener('change', fetchExamsList);
+    filterGrade?.addEventListener('change', fetchExamsList);
+    reloadBtn?.addEventListener('click', fetchExamsList);
+
+    // Bấm nút thêm câu hỏi
+    document.getElementById('btn-add-question-prompt')?.addEventListener('click', () => {
+        const qText = prompt('Nhập nội dung câu hỏi:');
+        if (!qText) return;
+        const optA = prompt('Nhập Đáp án A:');
+        const optB = prompt('Nhập Đáp án B:');
+        const optC = prompt('Nhập Đáp án C:');
+        const optD = prompt('Nhập Đáp án D:');
+        const correct = prompt('Nhập đáp án đúng (A, B, C hoặc D):')?.toUpperCase();
+
+        if (qText && optA && optB && correct) {
+            tempQuestions.push({
+                question: qText,
+                options: [optA, optB, optC || '', optD || ''],
+                answer: correct
+            });
+            renderTempQuestions();
+        } else {
+            alert('Vui lòng nhập đầy đủ câu hỏi và các lựa chọn đáp án!');
+        }
+    });
+
+    // Form Submit Tạo Đề Thi
+    document.getElementById('create-exam-form')?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const examCode = document.getElementById('exam-code').value.trim();
+        const subject = document.getElementById('exam-subject').value;
+        const grade = document.getElementById('exam-grade').value;
+        const timeLimit = document.getElementById('exam-time').value;
+
+        if (tempQuestions.length === 0) {
+            alert('Vui lòng tạo ít nhất 1 câu hỏi cho đề thi!');
+            return;
+        }
+
+        try {
+            const res = await fetch(`${API_URL}/exams`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    examCode,
+                    title: `Đề thi ${subject} - ${grade}`,
+                    subject,
+                    grade,
+                    timeLimit,
+                    questions: tempQuestions
+                })
+            });
+            const data = await res.json();
+
+            if (data.success) {
+                alert('Tạo đề thi mới thành công!');
+                modal?.classList.add('hidden');
+                document.getElementById('create-exam-form').reset();
+                tempQuestions = [];
+                fetchExamsList();
+            } else {
+                alert(data.message || 'Tạo đề thi thất bại!');
+            }
+        } catch (err) {
+            alert('Lỗi kết nối tới Server!');
+        }
+    });
+}
+
+// Render các câu hỏi tạm thời trong Modal
+function renderTempQuestions() {
+    const list = document.getElementById('questions-list');
+    const countSpan = document.getElementById('question-count');
+    if (!list) return;
+
+    if (countSpan) countSpan.innerText = tempQuestions.length;
+
+    if (tempQuestions.length === 0) {
+        list.innerHTML = `<p class="text-sm text-gray-400 italic">Chưa có câu hỏi nào. Nhấn "+ Thêm câu hỏi" để bắt đầu.</p>`;
+        return;
+    }
+
+    list.innerHTML = tempQuestions.map((q, idx) => `
+        <div class="p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg text-xs relative">
+            <p class="font-bold text-gray-800 dark:text-gray-200">Câu ${idx + 1}: ${q.question}</p>
+            <p class="text-gray-500 dark:text-gray-400 mt-1">A. ${q.options[0]} | B. ${q.options[1]} | C. ${q.options[2]} | D. ${q.options[3]}</p>
+            <p class="text-emerald-600 font-bold mt-1">Đáp án đúng: ${q.answer}</p>
+            <button type="button" onclick="window.removeTempQuestion(${idx})" class="absolute top-2 right-2 text-red-500 hover:text-red-700 font-bold">✕</button>
+        </div>
+    `).join('');
+}
+
+// Xóa câu hỏi tạm thời khỏi danh sách
+window.removeTempQuestion = function(index) {
+    tempQuestions.splice(index, 1);
+    renderTempQuestions();
+};
+
+// Xóa đề thi khỏi hệ thống
+window.deleteExam = async function(examCode) {
+    if (!confirm(`Bạn có chắc chắn muốn xóa đề thi ${examCode} không?`)) return;
+
+    try {
+        const res = await fetch(`${API_URL}/exams/${examCode}`, { method: 'DELETE' });
+        const data = await res.json();
+        if (data.success) {
+            fetchExamsList();
+        } else {
+            alert(data.message || 'Xóa thất bại!');
+        }
+    } catch (e) {
+        alert('Lỗi khi gửi yêu cầu xóa!');
+    }
+};
+
+// --- 4. GIAO DIỆN HỌC VIÊN ---
+function renderStudentDashboard(container) {
+    container.innerHTML = `
+        <div class="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl p-6 text-white shadow-lg flex justify-between items-center mt-6">
+            <div>
+                <h2 class="text-2xl font-bold">Chào mừng học viên, ${currentUser.fullname || currentUser.username}! 🎓</h2>
+                <p class="text-blue-100 text-sm mt-1">Nền tảng học tập trực tuyến đang sẵn sàng cho bạn.</p>
+            </div>
+        </div>
+    `;
+}
+
+// --- 5. HÀM XỬ LÝ CHUNG ---
 async function handleLoginSubmit(e) {
     e.preventDefault();
     const username = document.getElementById('username').value.trim();
@@ -137,7 +438,7 @@ async function handleLoginSubmit(e) {
         const data = await response.json();
 
         if (data.success) {
-            currentUser = { username: data.username, role: data.role, mcion: data.mcion };
+            currentUser = { username: data.username, fullname: data.fullname, role: data.role, mcion: data.mcion };
             currentAuthToken = data.token;
             localStorage.setItem('currentUser', JSON.stringify(currentUser));
             localStorage.setItem('token', currentAuthToken);
@@ -150,7 +451,6 @@ async function handleLoginSubmit(e) {
     }
 }
 
-// Xử lý gửi yêu cầu Đăng ký học viên mới tới API /api/register
 async function handleRegisterSubmit(e) {
     e.preventDefault();
     const fullname = document.getElementById('reg-fullname').value.trim();
@@ -179,41 +479,15 @@ async function handleRegisterSubmit(e) {
     }
 }
 
-// Hàm hiển thị thông báo lỗi/thành công trực quan
 function showNotification(element, message, type) {
+    if (!element) return;
     element.classList.remove('hidden');
-    if (type === 'success') {
-        element.className = 'mb-4 p-3 rounded-lg text-sm bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300';
-    } else {
-        element.className = 'mb-4 p-3 rounded-lg text-sm bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300';
-    }
+    element.className = type === 'success' 
+        ? 'mb-4 p-3 rounded-lg text-sm bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300' 
+        : 'mb-4 p-3 rounded-lg text-sm bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300';
     element.innerText = message;
 }
 
-// --- 4. DASHBOARD PHÂN QUYỀN ---
-function renderStudentDashboard(container) {
-    container.innerHTML = `
-        <div class="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl p-6 text-white shadow-lg flex justify-between items-center mt-6">
-            <div>
-                <h2 class="text-2xl font-bold">Chào mừng học viên, ${currentUser.username}! 🎓</h2>
-                <p class="text-blue-100 text-sm mt-1">Nền tảng học tập trực tuyến đang sẵn sàng cho bạn.</p>
-            </div>
-        </div>
-    `;
-}
-
-function renderAdminDashboard(container) {
-    container.innerHTML = `
-        <div class="bg-gray-800 text-white rounded-2xl p-6 shadow-lg flex justify-between items-center mt-6">
-            <div>
-                <h2 class="text-2xl font-bold">Bảng Điều Kiển Quản Trị (Admin Dashboard) 👑</h2>
-                <p class="text-gray-400 text-sm mt-1">Quản lý toàn bộ hệ thống học viên và đề thi.</p>
-            </div>
-        </div>
-    `;
-}
-
-// Xử lý Đăng xuất
 function handleLogout() {
     currentUser = null;
     currentAuthToken = null;

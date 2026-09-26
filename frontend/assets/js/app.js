@@ -1,4 +1,4 @@
-// frontend/assets/js/app.js - Tích hợp Quản lý Lịch sử thi toàn trường, Lọc học viên & Bảng xếp hạng
+// frontend/assets/js/app.js - Tích hợp Admin Dashboard Thống kê tổng hợp & Biểu đồ Chart.js
 
 export const API_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
     ? 'http://localhost:3000/api'
@@ -97,19 +97,20 @@ function renderRegisterView(container) {
     document.getElementById('go-to-login').addEventListener('click', () => renderLoginView(container));
 }
 
-// --- 3. BẢNG ĐIỀU KHIỂN ADMIN (Đã thêm Tab Quản lý lịch sử toàn trường & Bảng xếp hạng) ---
+// --- 3. BẢNG ĐIỀU KHIỂN ADMIN (ĐÃ NÂNG CẤP THỐNG KÊ & BIỂU ĐỒ) ---
 function renderAdminDashboard(container) {
     container.innerHTML = `
         <div class="space-y-6">
             <div class="bg-gray-800 text-white rounded-xl p-6 shadow-md flex flex-col md:flex-row justify-between items-center gap-4">
                 <div>
                     <h2 class="text-2xl font-bold flex items-center gap-2"><i class="fa-solid fa-user-shield text-amber-400"></i> Quản Trị Hệ Thống Đề Thi</h2>
-                    <p class="text-gray-300 text-sm mt-1">Quản lý kho đề thi và giám sát kết quả thi của toàn bộ học viên.</p>
+                    <p class="text-gray-300 text-sm mt-1">Quản lý kho đề thi, theo dõi thống kê tổng quan hệ thống và biểu đồ phân tích.</p>
                 </div>
                 <div class="flex gap-2 flex-wrap">
-                    <button id="admin-tab-exams-btn" class="px-4 py-2 bg-blue-600 text-white font-bold rounded-xl text-sm shadow transition">Quản Lý Đề Thi</button>
-                    <button id="admin-tab-history-btn" class="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white font-bold rounded-xl text-sm shadow transition">Lịch Sử Toàn Trường 📊</button>
-                    <button id="admin-tab-leaderboard-btn" class="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white font-bold rounded-xl text-sm shadow transition">Bảng Xếp Hạng 🏆</button>
+                    <button id="admin-tab-stats-btn" class="px-4 py-2 bg-blue-600 text-white font-bold rounded-xl text-sm shadow transition">📊 Thống Kê & Biểu Đồ</button>
+                    <button id="admin-tab-exams-btn" class="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white font-bold rounded-xl text-sm shadow transition">📝 Quản Lý Đề Thi</button>
+                    <button id="admin-tab-history-btn" class="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white font-bold rounded-xl text-sm shadow transition">📋 Lịch Sử Toàn Trường</button>
+                    <button id="admin-tab-leaderboard-btn" class="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white font-bold rounded-xl text-sm shadow transition">🏆 Bảng Xếp Hạng</button>
                 </div>
             </div>
 
@@ -169,6 +170,10 @@ function renderAdminDashboard(container) {
         </div>
     `;
 
+    document.getElementById('admin-tab-stats-btn').addEventListener('click', (e) => {
+        setActiveAdminTab(e.target);
+        loadAdminStatsTab();
+    });
     document.getElementById('admin-tab-exams-btn').addEventListener('click', (e) => {
         setActiveAdminTab(e.target);
         loadAdminExamsTab();
@@ -182,15 +187,203 @@ function renderAdminDashboard(container) {
         loadLeaderboardTab('admin-main-content');
     });
 
-    loadAdminExamsTab();
+    // Mặc định load tab Thống kê khi vào Admin Dashboard
+    loadAdminStatsTab();
 }
 
 function setActiveAdminTab(activeBtn) {
-    ['admin-tab-exams-btn', 'admin-tab-history-btn', 'admin-tab-leaderboard-btn'].forEach(id => {
+    ['admin-tab-stats-btn', 'admin-tab-exams-btn', 'admin-tab-history-btn', 'admin-tab-leaderboard-btn'].forEach(id => {
         const btn = document.getElementById(id);
         if (btn) btn.className = "px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white font-bold rounded-xl text-sm shadow transition";
     });
     if (activeBtn) activeBtn.className = "px-4 py-2 bg-blue-600 text-white font-bold rounded-xl text-sm shadow transition";
+}
+
+// Admin Tab 0: Thống kê tổng hợp & Biểu đồ Chart.js
+async function loadAdminStatsTab() {
+    const container = document.getElementById('admin-main-content');
+    container.innerHTML = `
+        <div class="space-y-6">
+            <!-- 1. Thẻ thống kê tổng quan (Stat Cards) -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-md border dark:border-gray-700 flex items-center justify-between">
+                    <div>
+                        <p class="text-xs font-semibold text-gray-400 uppercase">Tổng học sinh</p>
+                        <h3 id="stat-total-students" class="text-3xl font-extrabold text-gray-900 dark:text-white mt-1">...</h3>
+                    </div>
+                    <div class="w-12 h-12 bg-blue-100 text-blue-600 rounded-xl flex items-center justify-center text-xl">
+                        <i class="fa-solid fa-users"></i>
+                    </div>
+                </div>
+                <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-md border dark:border-gray-700 flex items-center justify-between">
+                    <div>
+                        <p class="text-xs font-semibold text-gray-400 uppercase">Tổng đề thi</p>
+                        <h3 id="stat-total-exams" class="text-3xl font-extrabold text-gray-900 dark:text-white mt-1">...</h3>
+                    </div>
+                    <div class="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-xl flex items-center justify-center text-xl">
+                        <i class="fa-solid fa-file-lines"></i>
+                    </div>
+                </div>
+                <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-md border dark:border-gray-700 flex items-center justify-between">
+                    <div>
+                        <p class="text-xs font-semibold text-gray-400 uppercase">Tổng lượt thi</p>
+                        <h3 id="stat-total-attempts" class="text-3xl font-extrabold text-gray-900 dark:text-white mt-1">...</h3>
+                    </div>
+                    <div class="w-12 h-12 bg-amber-100 text-amber-600 rounded-xl flex items-center justify-center text-xl">
+                        <i class="fa-solid fa-clipboard-check"></i>
+                    </div>
+                </div>
+                <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-md border dark:border-gray-700 flex items-center justify-between">
+                    <div>
+                        <p class="text-xs font-semibold text-gray-400 uppercase">Điểm trung bình</p>
+                        <h3 id="stat-avg-score" class="text-3xl font-extrabold text-gray-900 dark:text-white mt-1">...</h3>
+                    </div>
+                    <div class="w-12 h-12 bg-purple-100 text-purple-600 rounded-xl flex items-center justify-center text-xl">
+                        <i class="fa-solid fa-chart-line"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. Khu vực Biểu đồ (Charts) -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-md border dark:border-gray-700">
+                    <h4 class="font-bold text-base text-gray-800 dark:text-white mb-4 flex items-center gap-2">
+                        <i class="fa-solid fa-chart-bar text-blue-600"></i> Lượt thi theo môn học
+                    </h4>
+                    <div class="relative h-64">
+                        <canvas id="attemptsChart"></canvas>
+                    </div>
+                </div>
+                <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-md border dark:border-gray-700">
+                    <h4 class="font-bold text-base text-gray-800 dark:text-white mb-4 flex items-center gap-2">
+                        <i class="fa-solid fa-chart-pie text-emerald-600"></i> Phân bổ đề thi theo môn
+                    </h4>
+                    <div class="relative h-64 flex justify-center">
+                        <canvas id="examsChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3. Top Học Sinh Xuất Sắc -->
+            <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-md border dark:border-gray-700 space-y-4">
+                <h4 class="font-bold text-base text-gray-800 dark:text-white flex items-center gap-2">
+                    <i class="fa-solid fa-trophy text-amber-500"></i> Top Học Sinh Xuất Sắc Nhất
+                </h4>
+                <div id="admin-top-students-list" class="overflow-x-auto">
+                    <p class="text-sm text-gray-400 text-center py-4">Đang tải danh sách...</p>
+                </div>
+            </div>
+        </div>
+    `;
+
+    try {
+        const res = await fetch(`${API_URL}/admin/stats`);
+        const data = await res.json();
+        if (data.success) {
+            const { totalStudents, totalExams, totalAttempts, averageScore, topStudents, attemptsBySubject, examsBySubject } = data.stats;
+
+            // Gán giá trị vào Stat Cards
+            document.getElementById('stat-total-students').innerText = totalStudents;
+            document.getElementById('stat-total-exams').innerText = totalExams;
+            document.getElementById('stat-total-attempts').innerText = totalAttempts;
+            document.getElementById('stat-avg-score').innerText = averageScore;
+
+            // Render bảng Top Học Sinh
+            const topContainer = document.getElementById('admin-top-students-list');
+            if (topStudents && topStudents.length > 0) {
+                topContainer.innerHTML = `
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="border-b dark:border-gray-700 text-xs text-gray-400 uppercase">
+                                <th class="py-3 px-4">Hạng</th>
+                                <th class="py-3 px-4">Học viên</th>
+                                <th class="py-3 px-4">Đề thi</th>
+                                <th class="py-3 px-4">Môn học</th>
+                                <th class="py-3 px-4 text-center">Đúng</th>
+                                <th class="py-3 px-4 text-right">Điểm số</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y dark:divide-gray-700 text-sm">
+                            ${topStudents.map((item, idx) => `
+                                <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition">
+                                    <td class="py-3 px-4 font-bold text-amber-600">#${idx + 1}</td>
+                                    <td class="py-3 px-4 font-bold text-gray-800 dark:text-white">${item.fullname || item.username}</td>
+                                    <td class="py-3 px-4"><span class="px-2 py-1 bg-blue-50 text-blue-600 rounded text-xs font-bold">${item.examCode}</span></td>
+                                    <td class="py-3 px-4">${item.subject || 'Toán'}</td>
+                                    <td class="py-3 px-4 text-center font-semibold">${item.correctCount}/${item.totalQuestions}</td>
+                                    <td class="py-3 px-4 text-right font-black text-blue-600">${item.score}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                `;
+            } else {
+                topContainer.innerHTML = `<p class="text-sm text-gray-400 text-center py-4">Chưa có lịch sử làm bài nào.</p>`;
+            }
+
+            // Tải thư viện Chart.js tự động (nếu chưa có) và khởi tạo biểu đồ
+            loadChartJsIfNeeded(() => {
+                // Biểu đồ cột: Lượt thi theo môn
+                const attemptsCtx = document.getElementById('attemptsChart').getContext('2d');
+                const subjects = attemptsBySubject.map(i => i._id || 'Khác');
+                const attemptCounts = attemptsBySubject.map(i => i.count);
+
+                new Chart(attemptsCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: subjects.length ? subjects : ['Toán', 'Anh', 'Văn'],
+                        datasets: [{
+                            label: 'Số lượt thi',
+                            data: attemptCounts.length ? attemptCounts : [0, 0, 0],
+                            backgroundColor: 'rgba(37, 99, 235, 0.8)',
+                            borderRadius: 8
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { display: false } },
+                        scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
+                    }
+                });
+
+                // Biểu đồ tròn: Đề thi theo môn
+                const examsCtx = document.getElementById('examsChart').getContext('2d');
+                const examSubjects = examsBySubject.map(i => i._id || 'Khác');
+                const examCounts = examsBySubject.map(i => i.count);
+
+                new Chart(examsCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: examSubjects.length ? examSubjects : ['Toán', 'Anh', 'Văn'],
+                        datasets: [{
+                            data: examCounts.length ? examCounts : [1, 1, 1],
+                            backgroundColor: ['#2563eb', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899']
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { position: 'bottom' } }
+                    }
+                });
+            });
+        }
+    } catch (err) {
+        console.error('Lỗi khi tải thống kê admin:', err);
+    }
+}
+
+// Hàm hỗ trợ nạp CDN thư viện Chart.js tự động vào dự án
+function loadChartJsIfNeeded(callback) {
+    if (window.Chart) {
+        callback();
+        return;
+    }
+    const script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/chart.js';
+    script.onload = () => callback();
+    document.head.appendChild(script);
 }
 
 // Admin Tab 1: Quản lý đề thi
@@ -335,7 +528,7 @@ window.deleteExam = async (code) => {
     if (data.success) fetchExamsListForAdmin();
 };
 
-// Admin Tab 2: Lịch sử thi toàn trường & Lọc theo tên học viên
+// Admin Tab 2: Lịch sử thi toàn trường
 async function loadAdminHistoryTab() {
     const container = document.getElementById('admin-main-content');
     container.innerHTML = `
@@ -354,8 +547,7 @@ async function loadAdminHistoryTab() {
         </div>
     `;
 
-    const searchInput = document.getElementById('admin-search-input');
-    searchInput?.addEventListener('input', (e) => {
+    document.getElementById('admin-search-input')?.addEventListener('input', (e) => {
         fetchAdminHistories(e.target.value.trim());
     });
 
@@ -409,7 +601,6 @@ async function fetchAdminHistories(searchQuery) {
         historyListContainer.innerHTML = `<div class="text-center py-10 text-red-500">Không thể tải dữ liệu lịch sử!</div>`;
     }
 }
-
 
 // --- 4. GIAO DIỆN HỌC VIÊN & BẢNG XẾP HẠNG CHUNG ---
 function renderStudentDashboard(container) {

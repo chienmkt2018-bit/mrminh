@@ -1,10 +1,11 @@
-// backend/server.js - Hệ thống Backend chuẩn bảo mật (Node.js + Express + MongoDB)
+// backend/server.js - Đã sửa lỗi thứ tự định tuyến (Routing Order)
 const express = require('express');
 const cors = require('cors');
 const mongoose = require('mongoose');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const { v4: uuidv4 } = require('uuid');
+const path = require('path');
 
 const app = express();
 app.use(express.json({ limit: '10mb' }));
@@ -80,7 +81,7 @@ async function initDefaultAdmin() {
     }
 }
 
-// --- 4. API ENDPOINTS ---
+// --- 4. API ENDPOINTS (LUÔN ĐẶT LÊN TRÊN CÙNG) ---
 
 // Kiểm tra trạng thái server
 app.get('/api/health', (req, res) => {
@@ -156,6 +157,13 @@ app.post('/api/login', async (req, res) => {
     } catch (e) {
         res.status(500).json({ success: false, message: e.message });
     }
+});
+
+// --- 5. CẤU HÌNH PHỤC VỤ FRONT-END & CATCH-ALL (ĐẶT Ở DƯỚI CÙNG) ---
+app.use(express.static(path.join(__dirname, '../frontend')));
+
+app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, '../frontend/index.html'));
 });
 
 // Khởi chạy Server

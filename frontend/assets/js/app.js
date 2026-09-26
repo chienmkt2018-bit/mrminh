@@ -1,9 +1,9 @@
 // frontend/assets/js/app.js - Logic điều phối chính của ứng dụng SPA
 
-// Tự động nhận diện môi trường API (Localhost hay Render Production)
+// Tự động nhận diện môi trường API
 export const API_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
     ? 'http://localhost:3000/api'
-    : 'https://mrminh.onrender.com/api';
+    : '/api'; // Khi lên Render, tự động gọi vào /api cùng domain hiện tại
 
 let currentUser = JSON.parse(localStorage.getItem('currentUser')) || null;
 let currentAuthToken = localStorage.getItem('token') || null;

@@ -33,7 +33,7 @@ export function renderAppView() {
         appView.innerHTML = `
             <div class="max-w-md mx-auto bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-xl mt-10">
                 <div class="text-center mb-6">
-                    <h2 class="text-2xl font-bold">Đăng Nhập Hệ Thống v6</h2>
+                    <h2 class="text-2xl font-bold">Xin mời đăng nhập</h2>
                     <p class="text-sm text-gray-500 mt-1">Nền tảng học tập trực tuyến thông minh</p>
                 </div>
                 <form id="login-form" class="space-y-4">

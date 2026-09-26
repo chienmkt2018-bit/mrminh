@@ -1,4 +1,4 @@
-// frontend/assets/js/app.js - Tối ưu hóa giao diện Mobile Responsive toàn diện & Đã sửa lỗi
+// frontend/assets/js/app.js - Đã sửa lỗi tính năng thay đổi mật khẩu và tối ưu giao diện
 
 export const API_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
     ? 'http://localhost:3000/api'
@@ -28,10 +28,12 @@ export function renderAppView() {
                 <div class="flex items-center gap-2 text-xs sm:text-sm">
                     <span class="truncate max-w-[120px] sm:max-w-none">Chào, <b class="text-blue-600 dark:text-blue-400">${currentUser.fullname || currentUser.username}</b></span>
                     <span class="hidden sm:inline">(${currentUser.role === 'admin' ? 'Admin 👑' : 'Học viên 🎓'})</span>
+                    <button id="change-pwd-nav-btn" class="text-blue-600 dark:text-blue-400 hover:underline font-semibold text-xs px-1 py-1 transition">Đổi mật khẩu</button>
                     <button id="logout-btn" class="text-red-500 hover:text-red-700 font-semibold text-xs border border-red-200 px-2 py-1 rounded transition">Thoát</button>
                 </div>
             `;
             document.getElementById('logout-btn').addEventListener('click', handleLogout);
+            document.getElementById('change-pwd-nav-btn').addEventListener('click', renderChangePasswordView);
         }
 
         if (currentUser.role === 'admin') {
@@ -100,7 +102,7 @@ function renderRegisterView(container) {
     document.getElementById('go-to-login').addEventListener('click', () => renderLoginView(container));
 }
 
-// --- 3. DASHBOARD ADMIN (TỐI ƯU MOBILE TAB & UI) ---
+// --- 3. DASHBOARD ADMIN ---
 function renderAdminDashboard(container) {
     container.innerHTML = `
         <div class="space-y-6">
@@ -109,7 +111,6 @@ function renderAdminDashboard(container) {
                     <h2 class="text-xl sm:text-2xl font-bold flex items-center gap-2"><i class="fa-solid fa-user-shield text-amber-400"></i> Quản Trị Hệ Thống</h2>
                     <p class="text-gray-300 text-xs sm:text-sm mt-1">Quản lý kho đề thi, thống kê tổng quan và theo dõi kết quả toàn trường.</p>
                 </div>
-                <!-- Menu Tab Admin cuộn ngang mượt mà trên mobile -->
                 <div class="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
                     <button id="admin-tab-stats-btn" class="px-3.5 py-2 bg-blue-600 text-white font-bold rounded-xl text-xs sm:text-sm whitespace-nowrap shadow transition shrink-0">📊 Thống Kê</button>
                     <button id="admin-tab-exams-btn" class="px-3.5 py-2 bg-gray-700 hover:bg-gray-600 text-white font-bold rounded-xl text-xs sm:text-sm whitespace-nowrap shadow transition shrink-0">📝 Đề Thi</button>
@@ -121,7 +122,6 @@ function renderAdminDashboard(container) {
             <div id="admin-main-content" class="space-y-6"></div>
         </div>
 
-        <!-- MODAL TẠO ĐỀ THI (Đã tích hợp giao diện thêm câu hỏi hoàn chỉnh) -->
         <div id="create-exam-modal" class="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 hidden">
             <div class="bg-white dark:bg-gray-800 rounded-2xl max-w-2xl w-full p-5 sm:p-6 shadow-2xl max-h-[92vh] overflow-y-auto relative border dark:border-gray-700">
                 <button id="close-modal-btn" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 text-lg font-bold">✕</button>
@@ -158,7 +158,6 @@ function renderAdminDashboard(container) {
                         </div>
                     </div>
 
-                    <!-- Phần thêm câu hỏi thủ công vào đề thi -->
                     <div class="border-t pt-4 dark:border-gray-700 space-y-3">
                         <h4 class="font-bold text-sm text-gray-800 dark:text-gray-200">Soạn Câu Hỏi</h4>
                         <div class="p-3 bg-gray-50 dark:bg-gray-700/40 rounded-xl space-y-2 border dark:border-gray-600">
@@ -226,7 +225,6 @@ function setActiveAdminTab(activeBtn) {
     if (activeBtn) activeBtn.className = "px-3.5 py-2 bg-blue-600 text-white font-bold rounded-xl text-xs sm:text-sm whitespace-nowrap shadow transition shrink-0";
 }
 
-// Admin Tab 0: Thống kê & Biểu đồ
 async function loadAdminStatsTab() {
     const container = document.getElementById('admin-main-content');
     container.innerHTML = `
@@ -404,7 +402,6 @@ function loadChartJsIfNeeded(callback) {
     document.head.appendChild(script);
 }
 
-// Admin Tab 1: Quản lý đề thi
 function loadAdminExamsTab() {
     const container = document.getElementById('admin-main-content');
     container.innerHTML = `
@@ -498,7 +495,6 @@ function setupAdminModalEvents() {
     const cancelBtn = document.getElementById('btn-cancel-modal');
     [closeBtn, cancelBtn].forEach(btn => btn?.addEventListener('click', () => modal?.classList.add('hidden')));
 
-    // Lắng nghe sự kiện thêm từng câu hỏi vào mảng tạm
     const addQuestionBtn = document.getElementById('btn-add-question');
     if (addQuestionBtn) {
         addQuestionBtn.onclick = () => {
@@ -522,7 +518,6 @@ function setupAdminModalEvents() {
 
             renderTempQuestions();
 
-            // Reset input form câu hỏi sau khi thêm
             document.getElementById('new-q-text').value = '';
             document.getElementById('new-q-optA').value = '';
             document.getElementById('new-q-optB').value = '';
@@ -595,7 +590,6 @@ window.deleteExam = async (code) => {
     if (data.success) fetchExamsListForAdmin();
 };
 
-// Admin Tab 2: Lịch sử toàn trường
 async function loadAdminHistoryTab() {
     const container = document.getElementById('admin-main-content');
     container.innerHTML = `
@@ -669,7 +663,7 @@ async function fetchAdminHistories(searchQuery) {
     }
 }
 
-// --- 4. GIAO DIỆN HỌC VIÊN & BẢNG XẾP HẠNG ---
+// --- 4. GIAO DIỆN HỌC VIÊN ---
 function renderStudentDashboard(container) {
     container.innerHTML = `
         <div class="space-y-6">
@@ -678,7 +672,6 @@ function renderStudentDashboard(container) {
                     <h2 class="text-xl sm:text-2xl font-bold">Chào học viên, ${currentUser.fullname || currentUser.username}! 🎓</h2>
                     <p class="text-blue-100 text-xs sm:text-sm mt-1">Làm bài thi, tra cứu lịch sử cá nhân và đua top bảng vàng.</p>
                 </div>
-                <!-- Tab học viên cuộn ngang trên mobile -->
                 <div class="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
                     <button id="tab-exams-btn" class="px-3.5 py-2 bg-white text-blue-600 font-bold rounded-xl text-xs sm:text-sm whitespace-nowrap shadow transition shrink-0">Danh Sách Đề</button>
                     <button id="tab-history-btn" class="px-3.5 py-2 bg-blue-700/60 hover:bg-blue-700 text-white font-bold rounded-xl text-xs sm:text-sm whitespace-nowrap shadow transition shrink-0">Lịch Sử 📊</button>
@@ -714,7 +707,6 @@ function setActiveStudentTab(activeBtn) {
     if (activeBtn) activeBtn.className = "px-3.5 py-2 bg-white text-blue-600 font-bold rounded-xl text-xs sm:text-sm whitespace-nowrap shadow transition shrink-0";
 }
 
-// Bảng Xếp Hạng Chung (Hỗ trợ cuộn ngang bảng trên mobile)
 async function loadLeaderboardTab(targetContainerId) {
     const container = document.getElementById(targetContainerId);
     if (!container) return;
@@ -784,7 +776,6 @@ async function loadLeaderboardTab(targetContainerId) {
     }
 }
 
-// Student Tab 1: Danh sách đề thi
 function loadExamsTab() {
     const container = document.getElementById('student-main-content');
     container.innerHTML = `
@@ -858,7 +849,6 @@ async function fetchExamsForStudent() {
     }
 }
 
-// Student Tab 2: Lịch sử cá nhân
 async function loadExamHistoryTab() {
     const container = document.getElementById('student-main-content');
     container.innerHTML = `
@@ -916,7 +906,6 @@ async function loadExamHistoryTab() {
     }
 }
 
-// --- GIAO DIỆN LÀM BÀI THI (Tối ưu thiết bị di động) ---
 window.startExam = function(examCode) {
     const exam = studentExamsCache.find(e => e.examCode === examCode);
     if (!exam) { alert('Không tìm thấy thông tin đề thi!'); return; }
@@ -1070,7 +1059,6 @@ function renderResultScreen(exam, userAnswers, correctCount, score, totalQuestio
     document.getElementById('btn-back-dashboard')?.addEventListener('click', () => renderAppView());
 }
 
-// --- XỬ LÝ ĐĂNG NHẬP / ĐĂNG KÝ CHUNG ---
 async function handleLoginSubmit(e) {
     e.preventDefault();
     const username = document.getElementById('username').value.trim();
@@ -1139,7 +1127,7 @@ function handleLogout() {
 }
 
 // ==========================================
-// TÍNH NĂNG ĐỔI MẬT KHẨU (SPA Component)
+// TÍNH NĂNG ĐỔI MẬT KHẨU (Đã tích hợp nút Quay lại)
 // ==========================================
 
 export function renderChangePasswordView() {
@@ -1147,8 +1135,11 @@ export function renderChangePasswordView() {
     if (!appView) return;
 
     appView.innerHTML = `
-        <div class="max-w-md mx-auto mt-10 bg-white dark:bg-gray-800 p-8 rounded-xl shadow-md border border-gray-100 dark:border-gray-700">
-            <h3 class="text-2xl font-bold text-center text-gray-800 dark:text-white mb-6">
+        <div class="max-w-md mx-auto mt-10 bg-white dark:bg-gray-800 p-8 rounded-xl shadow-md border border-gray-100 dark:border-gray-700 relative">
+            <button id="back-to-dash-btn" class="absolute top-4 left-4 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 text-sm font-semibold flex items-center gap-1">
+                <i class="fa-solid fa-arrow-left"></i> Quay lại
+            </button>
+            <h3 class="text-2xl font-bold text-center text-gray-800 dark:text-white mb-6 mt-4">
                 <i class="fa-solid fa-key text-blue-500 mr-2"></i> Đổi Mật Khẩu
             </h3>
             
@@ -1158,32 +1149,33 @@ export function renderChangePasswordView() {
                 <div>
                     <label class="block text-gray-700 dark:text-gray-300 text-sm font-semibold mb-2">Mật khẩu hiện tại</label>
                     <input type="password" id="currentPassword" required 
-                        class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-800 dark:text-white"
+                        class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-800 dark:text-white text-sm"
                         placeholder="••••••••">
                 </div>
 
                 <div>
                     <label class="block text-gray-700 dark:text-gray-300 text-sm font-semibold mb-2">Mật khẩu mới</label>
                     <input type="password" id="newPassword" required 
-                        class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-800 dark:text-white"
+                        class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-800 dark:text-white text-sm"
                         placeholder="••••••••">
                 </div>
 
                 <div>
                     <label class="block text-gray-700 dark:text-gray-300 text-sm font-semibold mb-2">Xác nhận mật khẩu mới</label>
                     <input type="password" id="confirmPassword" required 
-                        class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-800 dark:text-white"
+                        class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-800 dark:text-white text-sm"
                         placeholder="••••••••">
                 </div>
 
                 <button type="submit" id="submit-btn" 
-                    class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 px-4 rounded-lg transition duration-200 shadow-sm cursor-pointer">
+                    class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 px-4 rounded-lg transition duration-200 shadow-sm cursor-pointer text-sm">
                     Cập nhật mật khẩu
                 </button>
             </form>
         </div>
     `;
 
+    document.getElementById('back-to-dash-btn').addEventListener('click', () => renderAppView());
     setupChangePasswordEvent();
 }
 
@@ -1215,7 +1207,6 @@ function setupChangePasswordEvent() {
                 return;
             }
 
-            // Đã đồng bộ sử dụng biến API_URL thay vì hardcode /api/change-password
             const response = await fetch(`${API_URL}/change-password`, {
                 method: 'PUT',
                 headers: {

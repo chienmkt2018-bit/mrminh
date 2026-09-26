@@ -3,7 +3,7 @@
 // Tự động nhận diện môi trường API (Localhost hay Render Production)
 export const API_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
     ? 'http://localhost:3000/api'
-    : 'https://mrminh.onrender.com/api'; // Thay bằng URL thật trên Render của bạn
+    : 'https://mrminh.onrender.com/api';
 
 let currentUser = JSON.parse(localStorage.getItem('currentUser')) || null;
 let currentAuthToken = localStorage.getItem('token') || null;

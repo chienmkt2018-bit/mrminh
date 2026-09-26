@@ -1,4 +1,4 @@
-// backend/server.js - Đã sửa lỗi thứ tự định tuyến (Routing Order)
+// backend/server.js - Đã tích hợp API Lịch sử thi & Bảng điểm chi tiết
 const express = require('express');
 const cors = require('cors');
 const mongoose = require('mongoose');
@@ -40,17 +40,22 @@ const UserSchema = new mongoose.Schema({
 
 const ExamSchema = new mongoose.Schema({
     examCode: { type: String, required: true, unique: true },
+    title: { type: String, default: '' },
     subject: { type: String, default: 'Toán' },
     grade: { type: String, default: 'Lớp 1' },
     timeLimit: { type: Number, default: 30 },
     questions: { type: Array, default: [] }
 }, { timestamps: true });
 
+// Mở rộng HistorySchema để lưu trữ đầy đủ thông tin bài thi cho học viên
 const HistorySchema = new mongoose.Schema({
     id: { type: String, default: () => uuidv4() },
     username: { type: String, required: true },
     fullname: { type: String, default: '' },
     examCode: { type: String, required: true },
+    examTitle: { type: String, default: '' },
+    subject: { type: String, default: '' },
+    grade: { type: String, default: '' },
     correctCount: { type: Number, default: 0 },
     totalQuestions: { type: Number, default: 0 },
     score: { type: Number, default: 0 },
@@ -81,7 +86,7 @@ async function initDefaultAdmin() {
     }
 }
 
-// --- 4. API ENDPOINTS (LUÔN ĐẶT LÊN TRÊN CÙNG) ---
+// --- 4. API ENDPOINTS ---
 
 // Kiểm tra trạng thái server
 app.get('/api/health', (req, res) => {
@@ -158,6 +163,7 @@ app.post('/api/login', async (req, res) => {
         res.status(500).json({ success: false, message: e.message });
     }
 });
+
 // --- API QUẢN LÝ ĐỀ THI (Dành cho Admin) ---
 
 // 1. Lấy danh sách đề thi
@@ -212,6 +218,56 @@ app.delete('/api/exams/:examCode', async (req, res) => {
         await Exam.deleteOne({ examCode });
         res.json({ success: true, message: 'Đã xóa đề thi thành công!' });
     } catch (e) {
+        res.status(500).json({ success: false, message: e.message });
+    }
+});
+
+// --- API XỬ LÝ LỊCH SỬ THI & BẢNG ĐIỂM (Dành cho Học viên) ---
+
+// 1. Lưu kết quả thi ngay sau khi học viên nộp bài
+app.post('/api/results', async (req, res) => {
+    try {
+        const { username, examCode, examTitle, subject, grade, score, correctCount, totalQuestions } = req.body;
+        
+        if (!username || !examCode) {
+            return res.status(400).json({ success: false, message: 'Thiếu thông tin học viên hoặc mã đề thi!' });
+        }
+
+        // Truy vấn thông tin học viên để lấy tên đầy đủ (fullname)
+        const user = await User.findOne({ username });
+
+        const newHistory = await History.create({
+            username,
+            fullname: user ? user.fullname : '',
+            examCode,
+            examTitle: examTitle || `Đề thi ${examCode}`,
+            subject: subject || 'Toán',
+            grade: grade || 'Lớp 1',
+            correctCount: Number(correctCount) || 0,
+            totalQuestions: Number(totalQuestions) || 0,
+            score: Number(score) || 0,
+            time: new Date().toLocaleTimeString('vi-VN')
+        });
+
+        res.json({ success: true, message: 'Đã lưu lịch sử thi thành công!', history: newHistory });
+    } catch (e) {
+        console.error('Lỗi khi lưu kết quả thi:', e);
+        res.status(500).json({ success: false, message: e.message });
+    }
+});
+
+// 2. Lấy danh sách lịch sử thi (hỗ trợ lọc theo username của học viên)
+app.get('/api/results', async (req, res) => {
+    try {
+        const { username } = req.query;
+        let filter = {};
+        if (username) filter.username = username;
+
+        // Truy vấn danh sách lịch sử, sắp xếp bài thi mới nhất lên đầu danh sách
+        const results = await History.find(filter).sort({ createdAt: -1 });
+        res.json({ success: true, results });
+    } catch (e) {
+        console.error('Lỗi khi lấy lịch sử thi:', e);
         res.status(500).json({ success: false, message: e.message });
     }
 });

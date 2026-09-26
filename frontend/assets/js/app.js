@@ -1,4 +1,4 @@
-// frontend/assets/js/app.js - Tối ưu hóa giao diện Mobile Responsive toàn diện
+// frontend/assets/js/app.js - Tối ưu hóa giao diện Mobile Responsive toàn diện & Đã sửa lỗi
 
 export const API_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
     ? 'http://localhost:3000/api'
@@ -121,7 +121,7 @@ function renderAdminDashboard(container) {
             <div id="admin-main-content" class="space-y-6"></div>
         </div>
 
-        <!-- MODAL TẠO ĐỀ THI (Tối ưu responsive màn hình nhỏ) -->
+        <!-- MODAL TẠO ĐỀ THI (Đã tích hợp giao diện thêm câu hỏi hoàn chỉnh) -->
         <div id="create-exam-modal" class="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 hidden">
             <div class="bg-white dark:bg-gray-800 rounded-2xl max-w-2xl w-full p-5 sm:p-6 shadow-2xl max-h-[92vh] overflow-y-auto relative border dark:border-gray-700">
                 <button id="close-modal-btn" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 text-lg font-bold">✕</button>
@@ -157,12 +157,38 @@ function renderAdminDashboard(container) {
                             <input type="number" id="exam-time" value="30" min="5" max="180" class="w-full px-3 py-2 border rounded-xl dark:bg-gray-700 dark:border-gray-600 text-sm">
                         </div>
                     </div>
-                    <div class="border-t pt-4 dark:border-gray-700">
-                        <h4 class="font-bold text-sm sm:text-base text-gray-800 dark:text-gray-200 mb-2">Danh sách câu hỏi (<span id="question-count">0</span>)</h4>
-                        <div id="questions-list" class="space-y-3 max-h-48 sm:max-h-60 overflow-y-auto pr-1">
-                            <p class="text-xs sm:text-sm text-gray-400 italic">Chưa có câu hỏi nào.</p>
+
+                    <!-- Phần thêm câu hỏi thủ công vào đề thi -->
+                    <div class="border-t pt-4 dark:border-gray-700 space-y-3">
+                        <h4 class="font-bold text-sm text-gray-800 dark:text-gray-200">Soạn Câu Hỏi</h4>
+                        <div class="p-3 bg-gray-50 dark:bg-gray-700/40 rounded-xl space-y-2 border dark:border-gray-600">
+                            <input type="text" id="new-q-text" placeholder="Nhập nội dung câu hỏi..." class="w-full px-3 py-1.5 border rounded-lg dark:bg-gray-700 dark:border-gray-600 text-xs">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                <input type="text" id="new-q-optA" placeholder="Đáp án A" class="px-3 py-1.5 border rounded-lg dark:bg-gray-700 dark:border-gray-600 text-xs">
+                                <input type="text" id="new-q-optB" placeholder="Đáp án B" class="px-3 py-1.5 border rounded-lg dark:bg-gray-700 dark:border-gray-600 text-xs">
+                                <input type="text" id="new-q-optC" placeholder="Đáp án C" class="px-3 py-1.5 border rounded-lg dark:bg-gray-700 dark:border-gray-600 text-xs">
+                                <input type="text" id="new-q-optD" placeholder="Đáp án D" class="px-3 py-1.5 border rounded-lg dark:bg-gray-700 dark:border-gray-600 text-xs">
+                            </div>
+                            <div class="flex items-center justify-between pt-1">
+                                <div class="flex items-center gap-2">
+                                    <label class="text-xs font-semibold">Đáp án đúng:</label>
+                                    <select id="new-q-answer" class="px-2 py-1 border rounded-lg dark:bg-gray-700 dark:border-gray-600 text-xs font-bold text-emerald-600">
+                                        <option value="A">A</option>
+                                        <option value="B">B</option>
+                                        <option value="C">C</option>
+                                        <option value="D">D</option>
+                                    </select>
+                                </div>
+                                <button type="button" id="btn-add-question" class="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg text-xs transition shadow">Thêm Câu Hỏi</button>
+                            </div>
+                        </div>
+
+                        <h4 class="font-bold text-sm text-gray-800 dark:text-gray-200 mt-3">Danh sách câu hỏi đã thêm (<span id="question-count">0</span>)</h4>
+                        <div id="questions-list" class="space-y-2 max-h-40 overflow-y-auto pr-1">
+                            <p class="text-xs text-gray-400 italic">Chưa có câu hỏi nào.</p>
                         </div>
                     </div>
+
                     <div class="pt-4 flex flex-col sm:flex-row justify-end gap-2 border-t dark:border-gray-700">
                         <button type="button" id="btn-cancel-modal" class="w-full sm:w-auto px-4 py-2 border rounded-xl text-sm hover:bg-gray-100 dark:hover:bg-gray-700">Hủy</button>
                         <button type="submit" class="w-full sm:w-auto px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-sm transition shadow">Lưu Đề Thi</button>
@@ -472,6 +498,40 @@ function setupAdminModalEvents() {
     const cancelBtn = document.getElementById('btn-cancel-modal');
     [closeBtn, cancelBtn].forEach(btn => btn?.addEventListener('click', () => modal?.classList.add('hidden')));
 
+    // Lắng nghe sự kiện thêm từng câu hỏi vào mảng tạm
+    const addQuestionBtn = document.getElementById('btn-add-question');
+    if (addQuestionBtn) {
+        addQuestionBtn.onclick = () => {
+            const qText = document.getElementById('new-q-text').value.trim();
+            const optA = document.getElementById('new-q-optA').value.trim();
+            const optB = document.getElementById('new-q-optB').value.trim();
+            const optC = document.getElementById('new-q-optC').value.trim();
+            const optD = document.getElementById('new-q-optD').value.trim();
+            const answer = document.getElementById('new-q-answer').value;
+
+            if (!qText || !optA || !optB || !optC || !optD) {
+                alert('Vui lòng nhập đầy đủ nội dung câu hỏi và 4 đáp án!');
+                return;
+            }
+
+            tempQuestions.push({
+                question: qText,
+                options: [optA, optB, optC, optD],
+                answer: answer
+            });
+
+            renderTempQuestions();
+
+            // Reset input form câu hỏi sau khi thêm
+            document.getElementById('new-q-text').value = '';
+            document.getElementById('new-q-optA').value = '';
+            document.getElementById('new-q-optB').value = '';
+            document.getElementById('new-q-optC').value = '';
+            document.getElementById('new-q-optD').value = '';
+            document.getElementById('new-q-text').focus();
+        };
+    }
+
     document.getElementById('create-exam-form')?.addEventListener('submit', async (e) => {
         e.preventDefault();
         const examCode = document.getElementById('exam-code').value.trim();
@@ -479,7 +539,10 @@ function setupAdminModalEvents() {
         const grade = document.getElementById('exam-grade').value;
         const timeLimit = document.getElementById('exam-time').value;
 
-        if (tempQuestions.length === 0) { alert('Vui lòng thêm ít nhất một câu hỏi!'); return; }
+        if (tempQuestions.length === 0) { 
+            alert('Vui lòng thêm ít nhất một câu hỏi vào đề thi!'); 
+            return; 
+        }
 
         try {
             const res = await fetch(`${API_URL}/exams`, {
@@ -504,14 +567,26 @@ function renderTempQuestions() {
     const countSpan = document.getElementById('question-count');
     if (!list) return;
     if (countSpan) countSpan.innerText = tempQuestions.length;
-    if (tempQuestions.length === 0) { list.innerHTML = `<p class="text-xs sm:text-sm text-gray-400 italic">Chưa có câu hỏi.</p>`; return; }
+    if (tempQuestions.length === 0) { 
+        list.innerHTML = `<p class="text-xs sm:text-sm text-gray-400 italic">Chưa có câu hỏi.</p>`; 
+        return; 
+    }
     list.innerHTML = tempQuestions.map((q, idx) => `
-        <div class="p-3 bg-gray-50 dark:bg-gray-700/50 rounded-xl text-xs relative">
-            <p class="font-bold">Câu ${idx + 1}: ${q.question}</p>
-            <p class="text-emerald-600 font-bold mt-1">Đáp án: ${q.answer}</p>
+        <div class="p-2.5 bg-gray-50 dark:bg-gray-700/50 rounded-xl text-xs relative flex justify-between items-start">
+            <div>
+                <p class="font-bold">Câu ${idx + 1}: ${q.question}</p>
+                <p class="text-[11px] text-gray-500 mt-0.5">A: ${q.options?.[0]} | B: ${q.options?.[1]} | C: ${q.options?.[2]} | D: ${q.options?.[3]}</p>
+                <p class="text-emerald-600 font-bold mt-0.5">Đáp án đúng: ${q.answer}</p>
+            </div>
+            <button type="button" onclick="window.removeTempQuestion(${idx})" class="text-red-500 hover:text-red-700 font-bold px-1.5 py-0.5">✕</button>
         </div>
     `).join('');
 }
+
+window.removeTempQuestion = (idx) => {
+    tempQuestions.splice(idx, 1);
+    renderTempQuestions();
+};
 
 window.deleteExam = async (code) => {
     if (!confirm(`Xóa đề thi ${code}?`)) return;
@@ -876,7 +951,7 @@ function renderExamInterface(exam) {
                         </p>
                         <div class="grid grid-cols-1 gap-2.5 pt-1">
                             ${['A', 'B', 'C', 'D'].map((optLabel, optIdx) => {
-                                const optText = q.options[optIdx];
+                                const optText = q.options?.[optIdx];
                                 if (!optText) return '';
                                 return `
                                     <label class="flex items-start gap-3 p-3 border rounded-xl dark:border-gray-700 hover:bg-blue-50 dark:hover:bg-gray-700/50 cursor-pointer transition">
@@ -1061,4 +1136,121 @@ function handleLogout() {
     localStorage.removeItem('currentUser');
     localStorage.removeItem('token');
     renderAppView();
+}
+
+// ==========================================
+// TÍNH NĂNG ĐỔI MẬT KHẨU (SPA Component)
+// ==========================================
+
+export function renderChangePasswordView() {
+    const appView = document.getElementById('app-view');
+    if (!appView) return;
+
+    appView.innerHTML = `
+        <div class="max-w-md mx-auto mt-10 bg-white dark:bg-gray-800 p-8 rounded-xl shadow-md border border-gray-100 dark:border-gray-700">
+            <h3 class="text-2xl font-bold text-center text-gray-800 dark:text-white mb-6">
+                <i class="fa-solid fa-key text-blue-500 mr-2"></i> Đổi Mật Khẩu
+            </h3>
+            
+            <div id="password-message" class="hidden mb-4 p-3 rounded-lg text-sm font-medium text-center"></div>
+
+            <form id="change-password-form" class="space-y-4">
+                <div>
+                    <label class="block text-gray-700 dark:text-gray-300 text-sm font-semibold mb-2">Mật khẩu hiện tại</label>
+                    <input type="password" id="currentPassword" required 
+                        class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-800 dark:text-white"
+                        placeholder="••••••••">
+                </div>
+
+                <div>
+                    <label class="block text-gray-700 dark:text-gray-300 text-sm font-semibold mb-2">Mật khẩu mới</label>
+                    <input type="password" id="newPassword" required 
+                        class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-800 dark:text-white"
+                        placeholder="••••••••">
+                </div>
+
+                <div>
+                    <label class="block text-gray-700 dark:text-gray-300 text-sm font-semibold mb-2">Xác nhận mật khẩu mới</label>
+                    <input type="password" id="confirmPassword" required 
+                        class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-800 dark:text-white"
+                        placeholder="••••••••">
+                </div>
+
+                <button type="submit" id="submit-btn" 
+                    class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 px-4 rounded-lg transition duration-200 shadow-sm cursor-pointer">
+                    Cập nhật mật khẩu
+                </button>
+            </form>
+        </div>
+    `;
+
+    setupChangePasswordEvent();
+}
+
+function setupChangePasswordEvent() {
+    const form = document.getElementById('change-password-form');
+    if (!form) return;
+
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const currentPassword = document.getElementById('currentPassword').value.trim();
+        const newPassword = document.getElementById('newPassword').value.trim();
+        const confirmPassword = document.getElementById('confirmPassword').value.trim();
+
+        if (newPassword !== confirmPassword) {
+            showPasswordMessage('Mật khẩu mới và xác nhận mật khẩu không khớp!', 'error');
+            return;
+        }
+
+        if (newPassword.length < 6) {
+            showPasswordMessage('Mật khẩu mới phải có ít nhất 6 ký tự!', 'error');
+            return;
+        }
+
+        try {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                showPasswordMessage('Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại!', 'error');
+                return;
+            }
+
+            // Đã đồng bộ sử dụng biến API_URL thay vì hardcode /api/change-password
+            const response = await fetch(`${API_URL}/change-password`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ currentPassword, newPassword, confirmPassword })
+            });
+
+            const data = await response.json();
+
+            if (response.ok && data.success) {
+                showPasswordMessage(data.message || 'Đổi mật khẩu thành công!', 'success');
+                form.reset();
+            } else {
+                showPasswordMessage(data.message || 'Có lỗi xảy ra, vui lòng thử lại.', 'error');
+            }
+
+        } catch (error) {
+            console.error('Lỗi kết nối API đổi mật khẩu:', error);
+            showPasswordMessage('Không thể kết nối đến máy chủ, vui lòng thử lại sau.', 'error');
+        }
+    });
+}
+
+function showPasswordMessage(text, type) {
+    const messageDiv = document.getElementById('password-message');
+    if (!messageDiv) return;
+
+    messageDiv.textContent = text;
+    messageDiv.classList.remove('hidden');
+
+    if (type === 'success') {
+        messageDiv.className = 'mb-4 p-3 rounded-lg text-sm font-medium text-center bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400';
+    } else {
+        messageDiv.className = 'mb-4 p-3 rounded-lg text-sm font-medium text-center bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400';
+    }
 }

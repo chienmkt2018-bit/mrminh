@@ -1,4 +1,4 @@
-// frontend/assets/js/app.js - Đã tích hợp tính năng Lịch sử thi & Bảng điểm chi tiết
+// frontend/assets/js/app.js - Tích hợp Quản lý Lịch sử thi toàn trường, Lọc học viên & Bảng xếp hạng
 
 export const API_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
     ? 'http://localhost:3000/api'
@@ -7,17 +7,13 @@ export const API_URL = window.location.hostname === 'localhost' || window.locati
 let currentUser = JSON.parse(localStorage.getItem('currentUser')) || null;
 let currentAuthToken = localStorage.getItem('token') || null;
 
-// Biến lưu danh sách câu hỏi tạm thời khi Admin tạo đề thi mới
 let tempQuestions = [];
-
-// Biến lưu trữ cache danh sách đề thi
 let studentExamsCache = [];
 
 document.addEventListener('DOMContentLoaded', () => {
     renderAppView();
 });
 
-// Dispatcher chính của ứng dụng SPA
 export function renderAppView() {
     const appView = document.getElementById('app-view');
     const userInfoHeader = document.getElementById('user-info');
@@ -43,7 +39,7 @@ export function renderAppView() {
     }
 }
 
-// --- 1. GIAO DIỆN ĐĂNG NHẬP ---
+// --- 1. ĐĂNG NHẬP ---
 function renderLoginView(container) {
     container.innerHTML = `
         <div class="max-w-md mx-auto bg-white dark:bg-gray-800 p-8 rounded-xl shadow-lg mt-10 border dark:border-gray-700">
@@ -61,7 +57,7 @@ function renderLoginView(container) {
                 <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 rounded-lg transition shadow-md">Đăng Nhập</button>
             </form>
             <div class="mt-6 text-center text-sm text-gray-600 dark:text-gray-400">
-                Chưa có tài khoản học viên? <button id="go-to-register" class="text-blue-600 dark:text-blue-400 font-semibold hover:underline ml-1">Đăng ký ngay</button>
+                Chưa có tài khoản? <button id="go-to-register" class="text-blue-600 dark:text-blue-400 font-semibold hover:underline ml-1">Đăng ký ngay</button>
             </div>
         </div>
     `;
@@ -70,7 +66,7 @@ function renderLoginView(container) {
     document.getElementById('go-to-register').addEventListener('click', () => renderRegisterView(container));
 }
 
-// --- 2. GIAO DIỆN ĐĂNG KÝ HỌC VIÊN ---
+// --- 2. ĐĂNG KÝ ---
 function renderRegisterView(container) {
     container.innerHTML = `
         <div class="max-w-md mx-auto bg-white dark:bg-gray-800 p-8 rounded-xl shadow-lg mt-10 border dark:border-gray-700">
@@ -87,7 +83,7 @@ function renderRegisterView(container) {
                 </div>
                 <div>
                     <label class="block text-sm font-medium mb-1">Mật khẩu</label>
-                    <input type="password" id="reg-password" placeholder="Mật khẩu của bạn" required class="w-full px-4 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 outline-none focus:ring-2 focus:ring-blue-500">
+                    <input type="password" id="reg-password" placeholder="Mật khẩu" required class="w-full px-4 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 outline-none focus:ring-2 focus:ring-blue-500">
                 </div>
                 <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-lg transition shadow-md">Xác Nhận Đăng Ký</button>
             </form>
@@ -101,50 +97,24 @@ function renderRegisterView(container) {
     document.getElementById('go-to-login').addEventListener('click', () => renderLoginView(container));
 }
 
-// --- 3. BẢNG ĐIỀU KHIỂN ADMIN ---
+// --- 3. BẢNG ĐIỀU KHIỂN ADMIN (Đã thêm Tab Quản lý lịch sử toàn trường & Bảng xếp hạng) ---
 function renderAdminDashboard(container) {
     container.innerHTML = `
         <div class="space-y-6">
-            <div class="bg-gray-800 text-white rounded-xl p-6 shadow-md flex justify-between items-center">
+            <div class="bg-gray-800 text-white rounded-xl p-6 shadow-md flex flex-col md:flex-row justify-between items-center gap-4">
                 <div>
                     <h2 class="text-2xl font-bold flex items-center gap-2"><i class="fa-solid fa-user-shield text-amber-400"></i> Quản Trị Hệ Thống Đề Thi</h2>
-                    <p class="text-gray-300 text-sm mt-1">Quản lý kho đề thi và ngân hàng câu hỏi trực tuyến.</p>
+                    <p class="text-gray-300 text-sm mt-1">Quản lý kho đề thi và giám sát kết quả thi của toàn bộ học viên.</p>
                 </div>
-                <button id="open-create-exam-btn" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-semibold transition flex items-center gap-2 shadow">
-                    <i class="fa-solid fa-plus"></i> Tạo Đề Thi Mới
-                </button>
+                <div class="flex gap-2 flex-wrap">
+                    <button id="admin-tab-exams-btn" class="px-4 py-2 bg-blue-600 text-white font-bold rounded-xl text-sm shadow transition">Quản Lý Đề Thi</button>
+                    <button id="admin-tab-history-btn" class="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white font-bold rounded-xl text-sm shadow transition">Lịch Sử Toàn Trường 📊</button>
+                    <button id="admin-tab-leaderboard-btn" class="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white font-bold rounded-xl text-sm shadow transition">Bảng Xếp Hạng 🏆</button>
+                </div>
             </div>
 
-            <div class="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-md border dark:border-gray-700 flex flex-wrap gap-4 items-center justify-between">
-                <div class="flex gap-4 flex-wrap">
-                    <div>
-                        <label class="text-xs font-semibold text-gray-500 dark:text-gray-400 block mb-1">Môn học</label>
-                        <select id="filter-subject" class="px-3 py-1.5 border rounded-lg dark:bg-gray-700 dark:border-gray-600 text-sm">
-                            <option value="">-- Tất cả các môn --</option>
-                            <option value="Toán">Toán</option>
-                            <option value="Anh">Anh</option>
-                            <option value="Văn">Văn</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="text-xs font-semibold text-gray-500 dark:text-gray-400 block mb-1">Lớp học</label>
-                        <select id="filter-grade" class="px-3 py-1.5 border rounded-lg dark:bg-gray-700 dark:border-gray-600 text-sm">
-                            <option value="">-- Tất cả các lớp --</option>
-                            <option value="Lớp 1">Lớp 1</option>
-                            <option value="Lớp 2">Lớp 2</option>
-                            <option value="Lớp 3">Lớp 3</option>
-                            <option value="Lớp 4">Lớp 4</option>
-                            <option value="Lớp 5">Lớp 5</option>
-                        </select>
-                    </div>
-                </div>
-                <button id="btn-reload-exams" class="text-blue-600 hover:text-blue-800 text-sm font-semibold flex items-center gap-1">
-                    <i class="fa-solid fa-rotate"></i> Làm mới danh sách
-                </button>
-            </div>
-
-            <div id="exam-list-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <div class="col-span-full text-center py-8 text-gray-500">Đang tải danh sách đề thi...</div>
+            <div id="admin-main-content" class="space-y-6">
+                <!-- Nội dung các tab Admin sẽ render ở đây -->
             </div>
         </div>
 
@@ -152,11 +122,9 @@ function renderAdminDashboard(container) {
         <div id="create-exam-modal" class="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 hidden">
             <div class="bg-white dark:bg-gray-800 rounded-2xl max-w-2xl w-full p-6 shadow-2xl max-h-[90vh] overflow-y-auto relative border dark:border-gray-700">
                 <button id="close-modal-btn" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 text-xl font-bold">✕</button>
-                
                 <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
                     <i class="fa-solid fa-file-circle-plus text-blue-600"></i> Tạo Đề Thi Mới
                 </h3>
-
                 <form id="create-exam-form" class="space-y-4">
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
@@ -182,46 +150,18 @@ function renderAdminDashboard(container) {
                             </select>
                         </div>
                         <div>
-                            <label class="block text-sm font-medium mb-1">Thời gian làm bài (Phút)</label>
+                            <label class="block text-sm font-medium mb-1">Thời gian (Phút)</label>
                             <input type="number" id="exam-time" value="30" min="5" max="180" class="w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 text-sm">
                         </div>
                     </div>
-
-                    <!-- TẠO NGẪU NHIÊN -->
-                    <div class="p-4 bg-purple-50 dark:bg-gray-700/40 rounded-xl border border-purple-200 dark:border-gray-600 space-y-3">
-                        <label class="block text-sm font-bold text-purple-800 dark:text-purple-300">
-                            <i class="fa-solid fa-wand-magic-sparkles text-purple-600"></i> Bốc ngẫu nhiên từ ngân hàng câu hỏi
-                        </label>
-                        <div class="flex items-center gap-3">
-                            <div class="flex-grow">
-                                <input type="number" id="auto-question-count" value="10" min="1" max="100" class="w-full px-3 py-1.5 border rounded-lg dark:bg-gray-700 dark:border-gray-600 text-sm">
-                            </div>
-                            <button type="button" id="btn-auto-generate" class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-semibold text-sm rounded-lg transition shadow">
-                                Bốc ngẫu nhiên
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- TẢI EXCEL -->
-                    <div class="p-4 bg-emerald-50 dark:bg-gray-700/40 rounded-xl border border-emerald-200 dark:border-gray-600">
-                        <label class="block text-sm font-bold text-emerald-800 dark:text-emerald-300 mb-1">
-                            <i class="fa-solid fa-file-excel text-emerald-600"></i> Hoặc tải lên file Excel (.xlsx)
-                        </label>
-                        <input type="file" id="excel-file-input" accept=".xlsx, .xls" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-emerald-600 file:text-white hover:file:bg-emerald-700 cursor-pointer">
-                    </div>
-
-                    <!-- DANH SÁCH CÂU HỎI -->
                     <div class="border-t pt-4 dark:border-gray-700">
-                        <div class="flex justify-between items-center mb-3">
-                            <h4 class="font-bold text-base text-gray-800 dark:text-gray-200">Danh sách câu hỏi (<span id="question-count">0</span>)</h4>
-                        </div>
+                        <h4 class="font-bold text-base text-gray-800 dark:text-gray-200 mb-2">Danh sách câu hỏi (<span id="question-count">0</span>)</h4>
                         <div id="questions-list" class="space-y-3 max-h-60 overflow-y-auto pr-1">
                             <p class="text-sm text-gray-400 italic">Chưa có câu hỏi nào.</p>
                         </div>
                     </div>
-
                     <div class="pt-4 flex justify-end gap-3 border-t dark:border-gray-700">
-                        <button type="button" id="btn-cancel-modal" class="px-4 py-2 border rounded-lg text-sm hover:bg-gray-100 dark:hover:bg-gray-700">Hủy</button>
+                        <button type="button" id="btn-cancel-modal" class="px-4 py-2 border rounded-lg text-sm hover:bg-gray-100">Hủy</button>
                         <button type="submit" class="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg text-sm transition">Lưu Đề Thi</button>
                     </div>
                 </form>
@@ -229,7 +169,76 @@ function renderAdminDashboard(container) {
         </div>
     `;
 
-    setupAdminEvents();
+    document.getElementById('admin-tab-exams-btn').addEventListener('click', (e) => {
+        setActiveAdminTab(e.target);
+        loadAdminExamsTab();
+    });
+    document.getElementById('admin-tab-history-btn').addEventListener('click', (e) => {
+        setActiveAdminTab(e.target);
+        loadAdminHistoryTab();
+    });
+    document.getElementById('admin-tab-leaderboard-btn').addEventListener('click', (e) => {
+        setActiveAdminTab(e.target);
+        loadLeaderboardTab('admin-main-content');
+    });
+
+    loadAdminExamsTab();
+}
+
+function setActiveAdminTab(activeBtn) {
+    ['admin-tab-exams-btn', 'admin-tab-history-btn', 'admin-tab-leaderboard-btn'].forEach(id => {
+        const btn = document.getElementById(id);
+        if (btn) btn.className = "px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white font-bold rounded-xl text-sm shadow transition";
+    });
+    if (activeBtn) activeBtn.className = "px-4 py-2 bg-blue-600 text-white font-bold rounded-xl text-sm shadow transition";
+}
+
+// Admin Tab 1: Quản lý đề thi
+function loadAdminExamsTab() {
+    const container = document.getElementById('admin-main-content');
+    container.innerHTML = `
+        <div class="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-md border dark:border-gray-700 flex flex-wrap gap-4 items-center justify-between">
+            <div class="flex gap-4 flex-wrap">
+                <div>
+                    <label class="text-xs font-semibold text-gray-500 block mb-1">Môn học</label>
+                    <select id="filter-subject" class="px-3 py-1.5 border rounded-lg dark:bg-gray-700 dark:border-gray-600 text-sm">
+                        <option value="">-- Tất cả các môn --</option>
+                        <option value="Toán">Toán</option>
+                        <option value="Anh">Anh</option>
+                        <option value="Văn">Văn</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="text-xs font-semibold text-gray-500 block mb-1">Lớp học</label>
+                    <select id="filter-grade" class="px-3 py-1.5 border rounded-lg dark:bg-gray-700 dark:border-gray-600 text-sm">
+                        <option value="">-- Tất cả các lớp --</option>
+                        <option value="Lớp 1">Lớp 1</option>
+                        <option value="Lớp 2">Lớp 2</option>
+                        <option value="Lớp 3">Lớp 3</option>
+                        <option value="Lớp 4">Lớp 4</option>
+                        <option value="Lớp 5">Lớp 5</option>
+                    </select>
+                </div>
+            </div>
+            <button id="open-create-exam-btn" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-semibold text-sm transition shadow flex items-center gap-2">
+                <i class="fa-solid fa-plus"></i> Tạo Đề Thi Mới
+            </button>
+        </div>
+        <div id="exam-list-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div class="col-span-full text-center py-8 text-gray-500">Đang tải danh sách đề thi...</div>
+        </div>
+    `;
+
+    document.getElementById('open-create-exam-btn').addEventListener('click', () => {
+        tempQuestions = [];
+        renderTempQuestions();
+        document.getElementById('create-exam-modal')?.classList.remove('hidden');
+    });
+
+    document.getElementById('filter-subject')?.addEventListener('change', fetchExamsListForAdmin);
+    document.getElementById('filter-grade')?.addEventListener('change', fetchExamsListForAdmin);
+
+    setupAdminModalEvents();
     fetchExamsListForAdmin();
 }
 
@@ -237,30 +246,28 @@ async function fetchExamsListForAdmin() {
     const container = document.getElementById('exam-list-container');
     const subject = document.getElementById('filter-subject')?.value || '';
     const grade = document.getElementById('filter-grade')?.value || '';
-
     if (!container) return;
 
     try {
         const res = await fetch(`${API_URL}/exams?subject=${encodeURIComponent(subject)}&grade=${encodeURIComponent(grade)}`);
         const data = await res.json();
-
         if (data.success && data.exams.length > 0) {
             container.innerHTML = data.exams.map(exam => `
-                <div class="bg-white dark:bg-gray-800 rounded-xl p-5 shadow-md border border-gray-100 dark:border-gray-700 flex flex-col justify-between hover:shadow-lg transition">
+                <div class="bg-white dark:bg-gray-800 rounded-xl p-5 shadow-md border dark:border-gray-700 flex flex-col justify-between">
                     <div>
                         <div class="flex justify-between items-start mb-3">
-                            <span class="px-2.5 py-1 bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 font-bold text-xs rounded-full">${exam.examCode}</span>
-                            <span class="px-2.5 py-1 bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300 font-semibold text-xs rounded-full">${exam.grade}</span>
+                            <span class="px-2.5 py-1 bg-blue-100 text-blue-700 font-bold text-xs rounded-full">${exam.examCode}</span>
+                            <span class="px-2.5 py-1 bg-indigo-100 text-indigo-700 font-semibold text-xs rounded-full">${exam.grade}</span>
                         </div>
                         <h3 class="font-bold text-lg text-gray-800 dark:text-white mb-2">${exam.title || 'Đề thi ' + exam.subject}</h3>
                         <div class="text-xs text-gray-500 space-y-1 mb-4">
-                            <p><i class="fa-solid fa-book"></i> Môn: <b class="text-gray-700 dark:text-gray-300">${exam.subject}</b></p>
-                            <p><i class="fa-solid fa-clock"></i> Thời gian: <b>${exam.timeLimit} phút</b></p>
-                            <p><i class="fa-solid fa-circle-question"></i> Số câu hỏi: <b>${exam.questions ? exam.questions.length : 0} câu</b></p>
+                            <p>Môn: <b class="text-gray-700 dark:text-gray-300">${exam.subject}</b></p>
+                            <p>Thời gian: <b>${exam.timeLimit} phút</b></p>
+                            <p>Số câu hỏi: <b>${exam.questions ? exam.questions.length : 0} câu</b></p>
                         </div>
                     </div>
                     <div class="pt-3 border-t dark:border-gray-700 flex justify-end">
-                        <button onclick="window.deleteExam('${exam.examCode}')" class="text-red-600 hover:text-red-800 text-xs font-semibold px-2 py-1 rounded hover:bg-red-50 transition">
+                        <button onclick="window.deleteExam('${exam.examCode}')" class="text-red-600 hover:text-red-800 text-xs font-semibold px-2 py-1 rounded hover:bg-red-50">
                             <i class="fa-solid fa-trash"></i> Xóa đề thi
                         </button>
                     </div>
@@ -270,72 +277,15 @@ async function fetchExamsListForAdmin() {
             container.innerHTML = `<div class="col-span-full text-center py-10 text-gray-400">Chưa có đề thi nào phù hợp.</div>`;
         }
     } catch (e) {
-        container.innerHTML = `<div class="col-span-full text-center py-10 text-red-500">Không thể tải danh sách đề thi!</div>`;
+        container.innerHTML = `<div class="col-span-full text-center py-10 text-red-500">Lỗi tải danh sách đề thi!</div>`;
     }
 }
 
-function setupAdminEvents() {
+function setupAdminModalEvents() {
     const modal = document.getElementById('create-exam-modal');
-    const openBtn = document.getElementById('open-create-exam-btn');
     const closeBtn = document.getElementById('close-modal-btn');
     const cancelBtn = document.getElementById('btn-cancel-modal');
-    const filterSubject = document.getElementById('filter-subject');
-    const filterGrade = document.getElementById('filter-grade');
-    const reloadBtn = document.getElementById('btn-reload-exams');
-    const excelInput = document.getElementById('excel-file-input');
-    const autoGenBtn = document.getElementById('btn-auto-generate');
-
-    openBtn?.addEventListener('click', () => { tempQuestions = []; renderTempQuestions(); modal?.classList.remove('hidden'); });
     [closeBtn, cancelBtn].forEach(btn => btn?.addEventListener('click', () => modal?.classList.add('hidden')));
-    filterSubject?.addEventListener('change', fetchExamsListForAdmin);
-    filterGrade?.addEventListener('change', fetchExamsListForAdmin);
-    reloadBtn?.addEventListener('click', fetchExamsListForAdmin);
-
-    autoGenBtn?.addEventListener('click', async () => {
-        const subject = document.getElementById('exam-subject').value;
-        const grade = document.getElementById('exam-grade').value;
-        const requestedCount = parseInt(document.getElementById('auto-question-count').value) || 10;
-        try {
-            const res = await fetch(`${API_URL}/exams?subject=${encodeURIComponent(subject)}&grade=${encodeURIComponent(grade)}`);
-            const data = await res.json();
-            if (!data.success || !data.exams || data.exams.length === 0) { alert('Ngân hàng câu hỏi trống!'); return; }
-            let questionBank = [];
-            data.exams.forEach(ex => { if (ex.questions) questionBank = questionBank.concat(ex.questions); });
-            tempQuestions = [...questionBank].sort(() => 0.5 - Math.random()).slice(0, requestedCount);
-            renderTempQuestions();
-            alert(`Đã bốc ngẫu nhiên ${tempQuestions.length} câu hỏi!`);
-        } catch (err) { alert('Lỗi kết nối ngân hàng câu hỏi!'); }
-    });
-
-    excelInput?.addEventListener('change', (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = function(event) {
-            try {
-                const data = new Uint8Array(event.target.result);
-                const workbook = XLSX.read(data, { type: 'array' });
-                const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-                const rows = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-                let loadedCount = 0;
-                for (let i = 1; i < rows.length; i++) {
-                    const row = rows[i];
-                    if (row && row.length >= 6 && row[0]) {
-                        tempQuestions.push({
-                            question: String(row[0]).trim(),
-                            options: [String(row[1]||'').trim(), String(row[2]||'').trim(), String(row[3]||'').trim(), String(row[4]||'').trim()],
-                            answer: String(row[5]||'A').trim().toUpperCase()
-                        });
-                        loadedCount++;
-                    }
-                }
-                renderTempQuestions();
-                alert(`Đã tải thành công ${loadedCount} câu hỏi từ Excel!`);
-                e.target.value = '';
-            } catch (err) { alert('Lỗi đọc file Excel!'); }
-        };
-        reader.readAsArrayBuffer(file);
-    });
 
     document.getElementById('create-exam-form')?.addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -369,18 +319,15 @@ function renderTempQuestions() {
     const countSpan = document.getElementById('question-count');
     if (!list) return;
     if (countSpan) countSpan.innerText = tempQuestions.length;
-    if (tempQuestions.length === 0) { list.innerHTML = `<p class="text-sm text-gray-400 italic">Chưa có câu hỏi nào.</p>`; return; }
+    if (tempQuestions.length === 0) { list.innerHTML = `<p class="text-sm text-gray-400 italic">Chưa có câu hỏi.</p>`; return; }
     list.innerHTML = tempQuestions.map((q, idx) => `
         <div class="p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg text-xs relative">
-            <p class="font-bold text-gray-800 dark:text-gray-200">Câu ${idx + 1}: ${q.question}</p>
-            <p class="text-gray-500 mt-1">A. ${q.options[0]} | B. ${q.options[1]} | C. ${q.options[2]} | D. ${q.options[3]}</p>
-            <p class="text-emerald-600 font-bold mt-1">Đáp án: ${q.answer}</p>
-            <button type="button" onclick="window.removeTempQuestion(${idx})" class="absolute top-2 right-2 text-red-500 font-bold">✕</button>
+            <p class="font-bold">Câu ${idx + 1}: ${q.question}</p>
+            <p class="text-emerald-600 font-bold mt-1">Đáp án đúng: ${q.answer}</p>
         </div>
     `).join('');
 }
 
-window.removeTempQuestion = (i) => { tempQuestions.splice(i, 1); renderTempQuestions(); };
 window.deleteExam = async (code) => {
     if (!confirm(`Xóa đề thi ${code}?`)) return;
     const res = await fetch(`${API_URL}/exams/${code}`, { method: 'DELETE' });
@@ -388,61 +335,216 @@ window.deleteExam = async (code) => {
     if (data.success) fetchExamsListForAdmin();
 };
 
+// Admin Tab 2: Lịch sử thi toàn trường & Lọc theo tên học viên
+async function loadAdminHistoryTab() {
+    const container = document.getElementById('admin-main-content');
+    container.innerHTML = `
+        <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md border dark:border-gray-700 space-y-4">
+            <div class="flex flex-col md:flex-row justify-between items-center gap-4">
+                <h3 class="text-xl font-bold text-gray-800 dark:text-white flex items-center gap-2">
+                    <i class="fa-solid fa-users-rectangle text-blue-600"></i> Lịch Sử Thi Toàn Trường
+                </h3>
+                <div class="w-full md:w-80">
+                    <input type="text" id="admin-search-input" placeholder="Tìm theo tên học viên, username, mã đề..." class="w-full px-4 py-2 border rounded-xl dark:bg-gray-700 dark:border-gray-600 text-sm outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+            </div>
+            <div id="admin-history-list" class="space-y-3">
+                <p class="text-sm text-gray-500 py-4 text-center">Đang tải lịch sử thi...</p>
+            </div>
+        </div>
+    `;
 
-// --- 4. GIAO DIỆN HỌC VIÊN & LỊCH SỬ THI ---
+    const searchInput = document.getElementById('admin-search-input');
+    searchInput?.addEventListener('input', (e) => {
+        fetchAdminHistories(e.target.value.trim());
+    });
+
+    fetchAdminHistories('');
+}
+
+async function fetchAdminHistories(searchQuery) {
+    const historyListContainer = document.getElementById('admin-history-list');
+    if (!historyListContainer) return;
+
+    try {
+        const res = await fetch(`${API_URL}/results?search=${encodeURIComponent(searchQuery)}`);
+        const data = await res.json();
+
+        if (data.success && data.results.length > 0) {
+            historyListContainer.innerHTML = data.results.map((item) => {
+                const dateStr = new Date(item.createdAt).toLocaleString('vi-VN');
+                const isPassed = item.score >= 5;
+                return `
+                    <div class="p-4 rounded-xl border dark:border-gray-700 bg-gray-50 dark:bg-gray-700/30 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                        <div class="space-y-1">
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <span class="px-2 py-0.5 bg-purple-100 text-purple-700 font-bold text-xs rounded">Học viên: ${item.fullname || item.username} (${item.username})</span>
+                                <span class="px-2 py-0.5 bg-blue-100 text-blue-700 font-bold text-xs rounded">Đề: ${item.examCode}</span>
+                            </div>
+                            <h4 class="font-bold text-base text-gray-800 dark:text-white">${item.examTitle}</h4>
+                            <p class="text-xs text-gray-500">Môn: <b>${item.subject}</b> | Khối: <b>${item.grade}</b> | Nộp lúc: ${dateStr}</p>
+                        </div>
+                        <div class="flex items-center gap-4 w-full md:w-auto justify-between md:justify-end border-t md:border-t-0 pt-2 md:pt-0">
+                            <div class="text-right">
+                                <p class="text-xs text-gray-400">Câu đúng</p>
+                                <p class="font-bold text-sm">${item.correctCount} / ${item.totalQuestions}</p>
+                            </div>
+                            <div class="text-right">
+                                <p class="text-xs text-gray-400">Điểm số</p>
+                                <p class="text-lg font-black text-blue-600">${item.score}</p>
+                            </div>
+                            <div>
+                                <span class="px-3 py-1 rounded-full text-xs font-bold ${isPassed ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}">
+                                    ${isPassed ? 'Đạt' : 'Chưa đạt'}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        } else {
+            historyListContainer.innerHTML = `<div class="text-center py-10 text-gray-400">Không tìm thấy kết quả phù hợp.</div>`;
+        }
+    } catch (err) {
+        historyListContainer.innerHTML = `<div class="text-center py-10 text-red-500">Không thể tải dữ liệu lịch sử!</div>`;
+    }
+}
+
+
+// --- 4. GIAO DIỆN HỌC VIÊN & BẢNG XẾP HẠNG CHUNG ---
 function renderStudentDashboard(container) {
     container.innerHTML = `
         <div class="space-y-6">
             <div class="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl p-6 text-white shadow-lg flex flex-col md:flex-row justify-between items-center gap-4">
                 <div>
                     <h2 class="text-2xl font-bold">Chào mừng học viên, ${currentUser.fullname || currentUser.username}! 🎓</h2>
-                    <p class="text-blue-100 text-sm mt-1">Chọn đề thi trực tuyến hoặc xem lại lịch sử các bài đã làm.</p>
+                    <p class="text-blue-100 text-sm mt-1">Làm bài thi, tra cứu lịch sử cá nhân và đua top bảng vàng thành tích.</p>
                 </div>
-                <div class="flex gap-2">
+                <div class="flex gap-2 flex-wrap">
                     <button id="tab-exams-btn" class="px-4 py-2 bg-white text-blue-600 font-bold rounded-xl text-sm shadow transition">Danh Sách Đề Thi</button>
                     <button id="tab-history-btn" class="px-4 py-2 bg-blue-700/60 hover:bg-blue-700 text-white font-bold rounded-xl text-sm shadow transition">Lịch Sử Thi 📊</button>
+                    <button id="tab-leaderboard-btn" class="px-4 py-2 bg-blue-700/60 hover:bg-blue-700 text-white font-bold rounded-xl text-sm shadow transition">Bảng Xếp Hạng 🏆</button>
                 </div>
             </div>
 
-            <div id="student-main-content" class="space-y-6">
-                <!-- Nội dung danh sách đề thi hoặc lịch sử sẽ render ở đây -->
-            </div>
+            <div id="student-main-content" class="space-y-6"></div>
         </div>
     `;
 
     document.getElementById('tab-exams-btn').addEventListener('click', (e) => {
-        e.target.className = "px-4 py-2 bg-white text-blue-600 font-bold rounded-xl text-sm shadow transition";
-        document.getElementById('tab-history-btn').className = "px-4 py-2 bg-blue-700/60 hover:bg-blue-700 text-white font-bold rounded-xl text-sm shadow transition";
+        setActiveStudentTab(e.target);
         loadExamsTab();
     });
-
     document.getElementById('tab-history-btn').addEventListener('click', (e) => {
-        e.target.className = "px-4 py-2 bg-white text-blue-600 font-bold rounded-xl text-sm shadow transition";
-        document.getElementById('tab-exams-btn').className = "px-4 py-2 bg-blue-700/60 hover:bg-blue-700 text-white font-bold rounded-xl text-sm shadow transition";
+        setActiveStudentTab(e.target);
         loadExamHistoryTab();
+    });
+    document.getElementById('tab-leaderboard-btn').addEventListener('click', (e) => {
+        setActiveStudentTab(e.target);
+        loadLeaderboardTab('student-main-content');
     });
 
     loadExamsTab();
 }
 
-// Tab 1: Danh sách đề thi
+function setActiveStudentTab(activeBtn) {
+    ['tab-exams-btn', 'tab-history-btn', 'tab-leaderboard-btn'].forEach(id => {
+        const btn = document.getElementById(id);
+        if (btn) btn.className = "px-4 py-2 bg-blue-700/60 hover:bg-blue-700 text-white font-bold rounded-xl text-sm shadow transition";
+    });
+    if (activeBtn) activeBtn.className = "px-4 py-2 bg-white text-blue-600 font-bold rounded-xl text-sm shadow transition";
+}
+
+// Bảng Xếp Hạng (Dùng chung cho cả Admin & Học viên)
+async function loadLeaderboardTab(targetContainerId) {
+    const container = document.getElementById(targetContainerId);
+    if (!container) return;
+
+    container.innerHTML = `
+        <div class="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-md border dark:border-gray-700 space-y-6">
+            <div class="flex flex-col md:flex-row justify-between items-center gap-4">
+                <div>
+                    <h3 class="text-xl font-bold text-gray-800 dark:text-white flex items-center gap-2">
+                        <i class="fa-solid fa-trophy text-amber-500"></i> Bảng Xếp Hạng Thành Tích Học Viên
+                    </h3>
+                    <p class="text-xs text-gray-500 mt-1">Xếp hạng theo điểm số cao nhất và thời gian hoàn thành bài thi sớm nhất.</p>
+                </div>
+            </div>
+            <div id="leaderboard-ranking-list" class="overflow-x-auto">
+                <p class="text-sm text-gray-500 py-6 text-center">Đang tải bảng xếp hạng...</p>
+            </div>
+        </div>
+    `;
+
+    const rankingListEl = document.getElementById('leaderboard-ranking-list');
+    try {
+        const res = await fetch(`${API_URL}/leaderboard`);
+        const data = await res.json();
+
+        if (data.success && data.rankings.length > 0) {
+            rankingListEl.innerHTML = `
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="border-b dark:border-gray-700 text-xs text-gray-400 uppercase">
+                            <th class="py-3 px-4">Hạng</th>
+                            <th class="py-3 px-4">Học viên</th>
+                            <th class="py-3 px-4">Đề thi</th>
+                            <th class="py-3 px-4">Môn</th>
+                            <th class="py-3 px-4 text-center">Đúng</th>
+                            <th class="py-3 px-4 text-right">Điểm số</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y dark:divide-gray-700 text-sm">
+                        ${data.rankings.map((item, idx) => {
+                            let badgeColor = "bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300";
+                            if (idx === 0) badgeColor = "bg-amber-100 text-amber-800 font-black";
+                            else if (idx === 1) badgeColor = "bg-slate-200 text-slate-800 font-bold";
+                            else if (idx === 2) badgeColor = "bg-amber-700/20 text-amber-900 font-bold";
+
+                            return `
+                                <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition">
+                                    <td class="py-3 px-4">
+                                        <span class="inline-flex items-center justify-center w-7 h-7 rounded-full text-xs ${badgeColor}">
+                                            ${idx + 1}
+                                        </span>
+                                    </td>
+                                    <td class="py-3 px-4 font-bold text-gray-800 dark:text-white">${item.fullname || item.username}</td>
+                                    <td class="py-3 px-4"><span class="px-2 py-1 bg-blue-50 text-blue-600 rounded text-xs font-bold">${item.examCode}</span></td>
+                                    <td class="py-3 px-4">${item.subject || 'N/A'}</td>
+                                    <td class="py-3 px-4 text-center font-semibold">${item.correctCount}/${item.totalQuestions}</td>
+                                    <td class="py-3 px-4 text-right font-black text-blue-600 text-base">${item.score}</td>
+                                </tr>
+                            `;
+                        }).join('')}
+                    </tbody>
+                </table>
+            `;
+        } else {
+            rankingListEl.innerHTML = `<div class="text-center py-10 text-gray-400">Chưa có dữ liệu xếp hạng nào.</div>`;
+        }
+    } catch (e) {
+        rankingListEl.innerHTML = `<div class="text-center py-10 text-red-500">Không thể tải bảng xếp hạng!</div>`;
+    }
+}
+
+// Student Tab 1: Danh sách đề thi
 function loadExamsTab() {
-    const contentContainer = document.getElementById('student-main-content');
-    contentContainer.innerHTML = `
+    const container = document.getElementById('student-main-content');
+    container.innerHTML = `
         <div class="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-md border dark:border-gray-700 flex gap-4 flex-wrap items-center">
             <div>
-                <label class="text-xs font-semibold text-gray-500 block mb-1">Lọc môn học</label>
+                <label class="text-xs font-semibold text-gray-500 block mb-1">Môn học</label>
                 <select id="student-filter-subject" class="px-3 py-1.5 border rounded-lg dark:bg-gray-700 dark:border-gray-600 text-sm">
-                    <option value="">-- Tất cả môn --</option>
+                    <option value="">-- Tất cả --</option>
                     <option value="Toán">Toán</option>
                     <option value="Anh">Anh</option>
                     <option value="Văn">Văn</option>
                 </select>
             </div>
             <div>
-                <label class="text-xs font-semibold text-gray-500 block mb-1">Lọc khối lớp</label>
+                <label class="text-xs font-semibold text-gray-500 block mb-1">Khối lớp</label>
                 <select id="student-filter-grade" class="px-3 py-1.5 border rounded-lg dark:bg-gray-700 dark:border-gray-600 text-sm">
-                    <option value="">-- Tất cả lớp --</option>
+                    <option value="">-- Tất cả --</option>
                     <option value="Lớp 1">Lớp 1</option>
                     <option value="Lớp 2">Lớp 2</option>
                     <option value="Lớp 3">Lớp 3</option>
@@ -452,7 +554,7 @@ function loadExamsTab() {
             </div>
         </div>
         <div id="student-exam-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <div class="col-span-full text-center py-10 text-gray-500">Đang tải danh sách đề thi...</div>
+            <div class="col-span-full text-center py-10 text-gray-500">Đang tải đề thi...</div>
         </div>
     `;
 
@@ -473,7 +575,7 @@ async function fetchExamsForStudent() {
         if (data.success && data.exams.length > 0) {
             studentExamsCache = data.exams;
             container.innerHTML = data.exams.map(exam => `
-                <div class="bg-white dark:bg-gray-800 rounded-xl p-5 shadow-md border dark:border-gray-700 flex flex-col justify-between hover:shadow-lg transition">
+                <div class="bg-white dark:bg-gray-800 rounded-xl p-5 shadow-md border dark:border-gray-700 flex flex-col justify-between">
                     <div>
                         <div class="flex justify-between items-start mb-3">
                             <span class="px-2.5 py-1 bg-emerald-100 text-emerald-700 font-bold text-xs rounded-full">${exam.examCode}</span>
@@ -481,9 +583,9 @@ async function fetchExamsForStudent() {
                         </div>
                         <h3 class="font-bold text-lg text-gray-800 dark:text-white mb-2">${exam.title || 'Đề thi ' + exam.subject}</h3>
                         <div class="text-xs text-gray-500 space-y-1 mb-4">
-                            <p><i class="fa-solid fa-book"></i> Môn: <b class="text-gray-700 dark:text-gray-300">${exam.subject}</b></p>
-                            <p><i class="fa-solid fa-clock"></i> Thời gian: <b>${exam.timeLimit} phút</b></p>
-                            <p><i class="fa-solid fa-circle-question"></i> Số câu hỏi: <b>${exam.questions ? exam.questions.length : 0} câu</b></p>
+                            <p>Môn: <b class="text-gray-700 dark:text-gray-300">${exam.subject}</b></p>
+                            <p>Thời gian: <b>${exam.timeLimit} phút</b></p>
+                            <p>Số câu: <b>${exam.questions ? exam.questions.length : 0} câu</b></p>
                         </div>
                     </div>
                     <button onclick="window.startExam('${exam.examCode}')" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded-lg text-sm transition shadow flex items-center justify-center gap-2">
@@ -499,10 +601,10 @@ async function fetchExamsForStudent() {
     }
 }
 
-// Tab 2: Lịch sử thi & Bảng điểm cá nhân
+// Student Tab 2: Lịch sử thi cá nhân
 async function loadExamHistoryTab() {
-    const contentContainer = document.getElementById('student-main-content');
-    contentContainer.innerHTML = `
+    const container = document.getElementById('student-main-content');
+    container.innerHTML = `
         <div class="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-md border dark:border-gray-700 space-y-4">
             <h3 class="text-xl font-bold text-gray-800 dark:text-white flex items-center gap-2">
                 <i class="fa-solid fa-clock-rotate-left text-blue-600"></i> Lịch Sử Làm Bài Của Tôi
@@ -519,17 +621,17 @@ async function loadExamHistoryTab() {
         const data = await res.json();
 
         if (data.success && data.results.length > 0) {
-            historyContainer.innerHTML = data.results.map((item, idx) => {
+            historyContainer.innerHTML = data.results.map((item) => {
                 const dateStr = new Date(item.createdAt).toLocaleString('vi-VN');
                 const isPassed = item.score >= 5;
                 return `
-                    <div class="p-4 rounded-xl border dark:border-gray-700 bg-gray-50 dark:bg-gray-700/30 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 hover:shadow transition">
+                    <div class="p-4 rounded-xl border dark:border-gray-700 bg-gray-50 dark:bg-gray-700/30 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                         <div class="space-y-1">
                             <div class="flex items-center gap-2">
                                 <span class="px-2 py-0.5 bg-blue-100 text-blue-700 font-bold text-xs rounded">${item.examCode}</span>
-                                <h4 class="font-bold text-base text-gray-800 dark:text-white">${item.examTitle || 'Bài thi ' + item.subject}</h4>
+                                <h4 class="font-bold text-base text-gray-800 dark:text-white">${item.examTitle}</h4>
                             </div>
-                            <p class="text-xs text-gray-500">Môn: <b>${item.subject || 'N/A'}</b> | Khối: <b>${item.grade || 'N/A'}</b> | Thời gian nộp: ${dateStr}</p>
+                            <p class="text-xs text-gray-500">Môn: <b>${item.subject}</b> | Khối: <b>${item.grade}</b> | Thời gian: ${dateStr}</p>
                         </div>
                         <div class="flex items-center gap-4 w-full md:w-auto justify-between md:justify-end border-t md:border-t-0 pt-2 md:pt-0">
                             <div class="text-right">
@@ -550,14 +652,14 @@ async function loadExamHistoryTab() {
                 `;
             }).join('');
         } else {
-            historyContainer.innerHTML = `<div class="text-center py-10 text-gray-400">Bạn chưa có lịch sử làm bài thi nào. Hãy bắt đầu thi ngay nhé!</div>`;
+            historyContainer.innerHTML = `<div class="text-center py-10 text-gray-400">Bạn chưa có lịch sử làm bài thi nào.</div>`;
         }
     } catch (err) {
         historyContainer.innerHTML = `<div class="text-center py-10 text-red-500">Không thể tải dữ liệu lịch sử thi!</div>`;
     }
 }
 
-// --- PHÒNG THI & GỬI KẾT QUẢ TỰ ĐỘNG ---
+// --- GIAO DIỆN LÀM BÀI THI ---
 window.startExam = function(examCode) {
     const exam = studentExamsCache.find(e => e.examCode === examCode);
     if (!exam) { alert('Không tìm thấy thông tin đề thi!'); return; }
@@ -574,13 +676,13 @@ function renderExamInterface(exam) {
             <div class="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-md border dark:border-gray-700 flex justify-between items-center sticky top-4 z-40">
                 <div>
                     <h2 class="font-bold text-lg text-gray-800 dark:text-white">${exam.title || exam.examCode}</h2>
-                    <p class="text-xs text-gray-500">Môn: ${exam.subject} | Tổng số câu: ${exam.questions.length}</p>
+                    <p class="text-xs text-gray-500">Môn: ${exam.subject} | Tổng câu: ${exam.questions.length}</p>
                 </div>
                 <div class="flex items-center gap-4">
-                    <div class="px-4 py-2 bg-red-100 text-red-700 font-mono font-bold text-lg rounded-xl flex items-center gap-2 shadow-inner">
+                    <div class="px-4 py-2 bg-red-100 text-red-700 font-mono font-bold text-lg rounded-xl flex items-center gap-2">
                         <i class="fa-solid fa-stopwatch"></i> <span id="time-countdown">--:--</span>
                     </div>
-                    <button id="btn-submit-exam" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-5 py-2 rounded-xl text-sm transition shadow">Nộp Bài</button>
+                    <button id="btn-submit-exam" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-5 py-2 rounded-xl text-sm transition">Nộp Bài</button>
                 </div>
             </div>
 
@@ -596,18 +698,14 @@ function renderExamInterface(exam) {
                                 if (!optText) return '';
                                 return `
                                     <label class="flex items-start gap-3 p-3 border rounded-xl dark:border-gray-700 hover:bg-blue-50 dark:hover:bg-gray-700/50 cursor-pointer transition">
-                                        <input type="radio" name="question-${qIndex}" value="${optLabel}" data-qindex="${qIndex}" class="mt-1 text-blue-600 focus:ring-blue-500">
-                                        <span class="text-sm text-gray-700 dark:text-gray-300"><b class="mr-1">${optLabel}.</b> ${optText}</span>
+                                        <input type="radio" name="question-${qIndex}" value="${optLabel}" data-qindex="${qIndex}" class="mt-1 text-blue-600">
+                                        <span class="text-sm text-gray-700 dark:text-gray-300"><b>${optLabel}.</b> ${optText}</span>
                                     </label>
                                 `;
                             }).join('')}
                         </div>
                     </div>
                 `).join('')}
-            </div>
-
-            <div class="flex justify-end pt-4">
-                <button id="btn-submit-exam-bottom" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-8 py-3 rounded-xl transition shadow-lg text-base">Nộp Bài Thi Ngay</button>
             </div>
         </div>
     `;
@@ -634,7 +732,7 @@ function renderExamInterface(exam) {
 
     const handleSubmitAction = () => {
         if (Object.keys(userAnswers).length < exam.questions.length) {
-            if (!confirm('Bạn chưa trả lời hết các câu hỏi. Bạn có chắc chắn muốn nộp bài?')) return;
+            if (!confirm('Bạn chưa trả lời hết các câu hỏi. Vẫn muốn nộp bài?')) return;
         } else {
             if (!confirm('Xác nhận nộp bài thi?')) return;
         }
@@ -643,10 +741,8 @@ function renderExamInterface(exam) {
     };
 
     document.getElementById('btn-submit-exam')?.addEventListener('click', handleSubmitAction);
-    document.getElementById('btn-submit-exam-bottom')?.addEventListener('click', handleSubmitAction);
 }
 
-// --- HÀM XỬ LÝ CHẤM ĐIỂM VÀ LƯU LỊCH SỬ THI LÊN SERVER ---
 async function processAndSubmitExam(exam, userAnswers) {
     let correctCount = 0;
     const totalQuestions = exam.questions.length;
@@ -657,7 +753,6 @@ async function processAndSubmitExam(exam, userAnswers) {
 
     const score = parseFloat(((correctCount / totalQuestions) * 10).toFixed(2));
 
-    // Gửi kết quả lưu vào cơ sở dữ liệu server
     try {
         await fetch(`${API_URL}/results`, {
             method: 'POST',
@@ -674,7 +769,7 @@ async function processAndSubmitExam(exam, userAnswers) {
             })
         });
     } catch (err) {
-        console.error('Không thể lưu kết quả thi lên server:', err);
+        console.error('Lỗi khi lưu kết quả:', err);
     }
 
     renderResultScreen(exam, userAnswers, correctCount, score, totalQuestions);
@@ -707,28 +802,9 @@ function renderResultScreen(exam, userAnswers, correctCount, score, totalQuestio
                 </div>
             </div>
 
-            <div class="space-y-4">
-                <h3 class="font-bold text-lg text-gray-800 dark:text-white">Xem lại chi tiết đáp án:</h3>
-                <div class="space-y-3 max-h-96 overflow-y-auto pr-2">
-                    ${exam.questions.map((q, idx) => {
-                        const userChoice = userAnswers[idx] || 'Không chọn';
-                        const isCorrect = userChoice === q.answer;
-                        return `
-                            <div class="p-4 rounded-xl border ${isCorrect ? 'bg-emerald-50/50 border-emerald-200' : 'bg-red-50/50 border-red-200'} space-y-2">
-                                <p class="font-bold text-sm text-gray-800 dark:text-gray-200">Câu ${idx + 1}:${q.question}</p>
-                                <div class="text-xs space-y-1">
-                                    <p class="${isCorrect ? 'text-emerald-600 font-bold' : 'text-red-600 font-bold'}">Lựa chọn của bạn: ${userChoice}</p>
-                                    <p class="text-emerald-700 font-semibold">Đáp án chuẩn: ${q.answer}</p>
-                                </div>
-                            </div>
-                        `;
-                    }).join('')}
-                </div>
-            </div>
-
             <div class="pt-4 flex justify-center">
                 <button id="btn-back-dashboard" class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-6 py-2.5 rounded-xl transition shadow">
-                    Quay về Trang Chủ Học Viên
+                    Quay về Trang Chủ
                 </button>
             </div>
         </div>
@@ -737,7 +813,7 @@ function renderResultScreen(exam, userAnswers, correctCount, score, totalQuestio
     document.getElementById('btn-back-dashboard')?.addEventListener('click', () => renderAppView());
 }
 
-// --- CÁC HÀM XỬ LÝ ĐĂNG NHẬP / ĐĂNG KÝ CHUNG ---
+// --- XỬ LÝ ĐĂNG NHẬP / ĐĂNG KÝ CHUNG ---
 async function handleLoginSubmit(e) {
     e.preventDefault();
     const username = document.getElementById('username').value.trim();
@@ -760,7 +836,7 @@ async function handleLoginSubmit(e) {
             showNotification(msgBox, data.message || 'Sai tên đăng nhập hoặc mật khẩu!', 'error');
         }
     } catch (err) {
-        showNotification(msgBox, 'Không thể kết nối đến máy chủ Backend!', 'error');
+        showNotification(msgBox, 'Không thể kết nối đến Backend!', 'error');
     }
 }
 
@@ -784,7 +860,7 @@ async function handleRegisterSubmit(e) {
             showNotification(msgBox, data.message || 'Đăng ký thất bại!', 'error');
         }
     } catch (err) {
-        showNotification(msgBox, 'Không thể kết nối đến máy chủ Backend!', 'error');
+        showNotification(msgBox, 'Không thể kết nối đến Backend!', 'error');
     }
 }
 

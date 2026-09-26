@@ -1,4 +1,4 @@
-// frontend/assets/js/app.js - Đã tích hợp tính năng tải đề thi bằng file Excel
+// frontend/assets/js/app.js - Tích hợp tính năng tạo đề thi tự động từ Ngân hàng câu hỏi
 
 export const API_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
     ? 'http://localhost:3000/api'
@@ -14,7 +14,7 @@ document.addEventListener('DOMContentLoaded', () => {
     renderAppView();
 });
 
-// Dispatcher chính của hệ thống SPA
+// Dispatcher chính của ứng dụng SPA
 export function renderAppView() {
     const appView = document.getElementById('app-view');
     const userInfoHeader = document.getElementById('user-info');
@@ -105,7 +105,7 @@ function renderAdminDashboard(container) {
             <div class="bg-gray-800 text-white rounded-xl p-6 shadow-md flex justify-between items-center">
                 <div>
                     <h2 class="text-2xl font-bold flex items-center gap-2"><i class="fa-solid fa-user-shield text-amber-400"></i> Quản Trị Hệ Thống Đề Thi</h2>
-                    <p class="text-gray-300 text-sm mt-1">Tạo thủ công hoặc tải lên bằng file Excel hàng loạt câu hỏi.</p>
+                    <p class="text-gray-300 text-sm mt-1">Tạo thủ công, tải file Excel hoặc bốc ngẫu nhiên từ ngân hàng câu hỏi.</p>
                 </div>
                 <button id="open-create-exam-btn" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-semibold transition flex items-center gap-2 shadow">
                     <i class="fa-solid fa-plus"></i> Tạo Đề Thi Mới
@@ -147,7 +147,7 @@ function renderAdminDashboard(container) {
             </div>
         </div>
 
-        <!-- MODAL TẠO ĐỀ THI MỚI & UPLOAD EXCEL -->
+        <!-- MODAL TẠO ĐỀ THI MỚI, UPLOAD EXCEL & TẠO TỰ ĐỘNG TỪ NGÂN HÀNG -->
         <div id="create-exam-modal" class="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 hidden">
             <div class="bg-white dark:bg-gray-800 rounded-2xl max-w-2xl w-full p-6 shadow-2xl max-h-[90vh] overflow-y-auto relative border dark:border-gray-700">
                 <button id="close-modal-btn" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 text-xl font-bold">✕</button>
@@ -186,13 +186,32 @@ function renderAdminDashboard(container) {
                         </div>
                     </div>
 
-                    <!-- KHU VỰC TẢI LÊN FILE EXCEL -->
+                    <!-- KHU VỰC 1: TẠO TỰ ĐỘNG TỪ NGÂN HÀNG CÂU HỎI -->
+                    <div class="p-4 bg-purple-50 dark:bg-gray-700/40 rounded-xl border border-purple-200 dark:border-gray-600 space-y-3">
+                        <label class="block text-sm font-bold text-purple-800 dark:text-purple-300">
+                            <i class="fa-solid fa-wand-magic-sparkles text-purple-600"></i> Tạo tự động từ Ngân hàng câu hỏi
+                        </label>
+                        <div class="flex items-center gap-3">
+                            <div class="flex-grow">
+                                <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Số lượng câu hỏi ngẫu nhiên cần lấy:</label>
+                                <input type="number" id="auto-question-count" value="10" min="1" max="100" class="w-full px-3 py-1.5 border rounded-lg dark:bg-gray-700 dark:border-gray-600 text-sm">
+                            </div>
+                            <div class="flex items-end">
+                                <button type="button" id="btn-auto-generate" class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-semibold text-sm rounded-lg transition shadow flex items-center gap-1.5">
+                                    <i class="fa-solid fa-shuffle"></i> Bốc ngẫu nhiên
+                                </button>
+                            </div>
+                        </div>
+                        <p class="text-xs text-gray-500 dark:text-gray-400">Hệ thống sẽ trộn ngẫu nhiên từ kho câu hỏi đã có của môn học và khối lớp tương ứng.</p>
+                    </div>
+
+                    <!-- KHU VỰC 2: TẢI LÊN FILE EXCEL -->
                     <div class="p-4 bg-emerald-50 dark:bg-gray-700/40 rounded-xl border border-emerald-200 dark:border-gray-600">
                         <label class="block text-sm font-bold text-emerald-800 dark:text-emerald-300 mb-1">
-                            <i class="fa-solid fa-file-excel text-emerald-600"></i> Hoặc tải câu hỏi tự động bằng file Excel (.xlsx)
+                            <i class="fa-solid fa-file-excel text-emerald-600"></i> Hoặc tải lên file Excel (.xlsx)
                         </label>
                         <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">
-                            Cấu trúc các cột theo thứ tự: <code class="bg-white dark:bg-gray-800 px-1 py-0.5 rounded text-red-500 font-semibold">Câu hỏi | Đáp án A | Đáp án B | Đáp án C | Đáp án D | Đáp án đúng (A/B/C/D)</code> (Dòng đầu tiên là tiêu đề).
+                            Cấu trúc cột: <code class="bg-white dark:bg-gray-800 px-1 py-0.5 rounded text-red-500 font-semibold">Câu hỏi | Đáp án A | Đáp án B | Đáp án C | Đáp án D | Đáp án đúng (A/B/C/D)</code>
                         </p>
                         <input type="file" id="excel-file-input" accept=".xlsx, .xls" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-emerald-600 file:text-white hover:file:bg-emerald-700 cursor-pointer">
                     </div>
@@ -200,13 +219,13 @@ function renderAdminDashboard(container) {
                     <!-- DANH SÁCH CÂU HỎI -->
                     <div class="border-t pt-4 dark:border-gray-700">
                         <div class="flex justify-between items-center mb-3">
-                            <h4 class="font-bold text-base text-gray-800 dark:text-gray-200">Danh sách câu hỏi (<span id="question-count">0</span>)</h4>
+                            <h4 class="font-bold text-base text-gray-800 dark:text-gray-200">Danh sách câu hỏi hiện tại (<span id="question-count">0</span>)</h4>
                             <button type="button" id="btn-add-question-prompt" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-3 py-1.5 rounded-lg font-semibold transition">
                                 + Thêm thủ công
                             </button>
                         </div>
                         <div id="questions-list" class="space-y-3 max-h-60 overflow-y-auto pr-1">
-                            <p class="text-sm text-gray-400 italic">Chưa có câu hỏi nào. Bạn có thể thêm thủ công hoặc tải file Excel ở trên.</p>
+                            <p class="text-sm text-gray-400 italic">Chưa có câu hỏi nào. Hãy bốc tự động từ ngân hàng hoặc tải file Excel.</p>
                         </div>
                     </div>
 
@@ -265,7 +284,7 @@ async function fetchExamsList() {
     }
 }
 
-// Xử lý sự kiện trong trang Admin
+// Thiết lập sự kiện trang Admin
 function setupAdminEvents() {
     const modal = document.getElementById('create-exam-modal');
     const openBtn = document.getElementById('open-create-exam-btn');
@@ -275,6 +294,7 @@ function setupAdminEvents() {
     const filterGrade = document.getElementById('filter-grade');
     const reloadBtn = document.getElementById('btn-reload-exams');
     const excelInput = document.getElementById('excel-file-input');
+    const autoGenBtn = document.getElementById('btn-auto-generate');
 
     openBtn?.addEventListener('click', () => {
         tempQuestions = [];
@@ -288,7 +308,58 @@ function setupAdminEvents() {
     filterGrade?.addEventListener('change', fetchExamsList);
     reloadBtn?.addEventListener('click', fetchExamsList);
 
-    // --- XỬ LÝ ĐỌC FILE EXCEL BẰNG SHEETJS ---
+    // --- TÍNH NĂNG 1: TẠO TỰ ĐỘNG TỪ NGÂN HÀNG CÂU HỎI ---
+    autoGenBtn?.addEventListener('click', async () => {
+        const subject = document.getElementById('exam-subject').value;
+        const grade = document.getElementById('exam-grade').value;
+        const requestedCount = parseInt(document.getElementById('auto-question-count').value) || 10;
+
+        if (!subject || !grade) {
+            alert('Vui lòng chọn Môn học và Khối lớp ở trên trước khi tạo tự động!');
+            return;
+        }
+
+        try {
+            // Lấy toàn bộ đề thi hiện có thuộc môn và lớp này để trích xuất ngân hàng câu hỏi
+            const res = await fetch(`${API_URL}/exams?subject=${encodeURIComponent(subject)}&grade=${encodeURIComponent(grade)}`);
+            const data = await res.json();
+
+            if (!data.success || !data.exams || data.exams.length === 0) {
+                alert('Ngân hàng câu hỏi trống! Chưa có đề thi nào thuộc môn và lớp này để bốc ngẫu nhiên.');
+                return;
+            }
+
+            // Gom toàn bộ câu hỏi từ các đề thi tìm được
+            let questionBank = [];
+            data.exams.forEach(exam => {
+                if (exam.questions && Array.isArray(exam.questions)) {
+                    questionBank = questionBank.concat(exam.questions);
+                }
+            });
+
+            if (questionBank.length === 0) {
+                alert('Không tìm thấy câu hỏi nào trong các đề thi hiện có!');
+                return;
+            }
+
+            if (requestedCount > questionBank.length) {
+                alert(`Ngân hàng hiện chỉ có tổng cộng ${questionBank.length} câu hỏi. Hệ thống sẽ lấy toàn bộ số câu này.`);
+            }
+
+            // Xáo trộn ngẫu nhiên mảng câu hỏi (Fisher-Yates shuffle) và cắt lấy số lượng yêu cầu
+            const shuffled = [...questionBank].sort(() => 0.5 - Math.random());
+            tempQuestions = shuffled.slice(0, requestedCount);
+
+            renderTempQuestions();
+            alert(`Đã bốc ngẫu nhiên thành công ${tempQuestions.length} câu hỏi từ ngân hàng!`);
+
+        } catch (err) {
+            console.error(err);
+            alert('Lỗi kết nối khi lấy dữ liệu ngân hàng câu hỏi!');
+        }
+    });
+
+    // --- TÍNH NĂNG 2: ĐỌC FILE EXCEL BẰNG SHEETJS ---
     excelInput?.addEventListener('change', (e) => {
         const file = e.target.files[0];
         if (!file) return;
@@ -298,19 +369,13 @@ function setupAdminEvents() {
             try {
                 const data = new Uint8Array(event.target.result);
                 const workbook = XLSX.read(data, { type: 'array' });
-                
-                // Lấy sheet đầu tiên của file Excel
                 const firstSheetName = workbook.SheetNames[0];
                 const worksheet = workbook.Sheets[firstSheetName];
-                
-                // Chuyển sheet thành mảng 2 chiều (bỏ qua header dòng 1)
                 const rows = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
                 
                 let loadedCount = 0;
-                // Bắt đầu từ hàng thứ 2 (index 1) để bỏ qua tiêu đề cột
                 for (let i = 1; i < rows.length; i++) {
                     const row = rows[i];
-                    // Kiểm tra dòng hợp lệ (có câu hỏi và ít nhất 2 đáp án A, B)
                     if (row && row.length >= 6 && row[0]) {
                         tempQuestions.push({
                             question: String(row[0]).trim(),
@@ -327,17 +392,17 @@ function setupAdminEvents() {
                 }
 
                 renderTempQuestions();
-                alert(`Đã tải thành công ${loadedCount} câu hỏi từ file Excel vào danh sách tạm!`);
-                e.target.value = ''; // Reset input file
+                alert(`Đã tải thành công ${loadedCount} câu hỏi từ file Excel!`);
+                e.target.value = '';
             } catch (err) {
                 console.error(err);
-                alert('Lỗi đọc file Excel! Vui lòng kiểm tra định dạng file (.xlsx hoặc .xls).');
+                alert('Lỗi đọc file Excel! Vui lòng kiểm tra định dạng file.');
             }
         };
         reader.readAsArrayBuffer(file);
     });
 
-    // Bấm nút thêm câu hỏi thủ công
+    // Thêm câu hỏi thủ công
     document.getElementById('btn-add-question-prompt')?.addEventListener('click', () => {
         const qText = prompt('Nhập nội dung câu hỏi:');
         if (!qText) return;
@@ -355,11 +420,11 @@ function setupAdminEvents() {
             });
             renderTempQuestions();
         } else {
-            alert('Vui lòng nhập đầy đủ câu hỏi và các lựa chọn đáp án!');
+            alert('Vui lòng nhập đầy đủ câu hỏi và các đáp án!');
         }
     });
 
-    // Form Submit Tạo Đề Thi
+    // Gửi form lưu đề thi lên Server
     document.getElementById('create-exam-form')?.addEventListener('submit', async (e) => {
         e.preventDefault();
         const examCode = document.getElementById('exam-code').value.trim();
@@ -368,7 +433,7 @@ function setupAdminEvents() {
         const timeLimit = document.getElementById('exam-time').value;
 
         if (tempQuestions.length === 0) {
-            alert('Vui lòng thêm ít nhất 1 câu hỏi (hoặc tải file Excel) cho đề thi!');
+            alert('Vui lòng thêm câu hỏi (bằng cách bốc tự động, file Excel hoặc thủ công)!');
             return;
         }
 
@@ -402,7 +467,7 @@ function setupAdminEvents() {
     });
 }
 
-// Render các câu hỏi trong Modal
+// Hiển thị danh sách câu hỏi tạm trong Modal
 function renderTempQuestions() {
     const list = document.getElementById('questions-list');
     const countSpan = document.getElementById('question-count');
@@ -411,7 +476,7 @@ function renderTempQuestions() {
     if (countSpan) countSpan.innerText = tempQuestions.length;
 
     if (tempQuestions.length === 0) {
-        list.innerHTML = `<p class="text-sm text-gray-400 italic">Chưa có câu hỏi nào. Bạn có thể thêm thủ công hoặc tải file Excel ở trên.</p>`;
+        list.innerHTML = `<p class="text-sm text-gray-400 italic">Chưa có câu hỏi nào. Hãy bốc tự động từ ngân hàng hoặc tải file Excel.</p>`;
         return;
     }
 
@@ -425,13 +490,11 @@ function renderTempQuestions() {
     `).join('');
 }
 
-// Xóa câu hỏi tạm thời khỏi danh sách
 window.removeTempQuestion = function(index) {
     tempQuestions.splice(index, 1);
     renderTempQuestions();
 };
 
-// Xóa đề thi khỏi hệ thống
 window.deleteExam = async function(examCode) {
     if (!confirm(`Bạn có chắc chắn muốn xóa đề thi ${examCode} không?`)) return;
 

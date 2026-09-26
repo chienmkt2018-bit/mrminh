@@ -1,4 +1,4 @@
-// backend/server.js - Đã tích hợp API Lịch sử thi & Bảng điểm chi tiết
+// backend/server.js - Đã nâng cấp API Lịch sử thi, Lọc theo tên học viên & Bảng xếp hạng
 const express = require('express');
 const cors = require('cors');
 const mongoose = require('mongoose');
@@ -47,7 +47,6 @@ const ExamSchema = new mongoose.Schema({
     questions: { type: Array, default: [] }
 }, { timestamps: true });
 
-// Mở rộng HistorySchema để lưu trữ đầy đủ thông tin bài thi cho học viên
 const HistorySchema = new mongoose.Schema({
     id: { type: String, default: () => uuidv4() },
     username: { type: String, required: true },
@@ -88,12 +87,11 @@ async function initDefaultAdmin() {
 
 // --- 4. API ENDPOINTS ---
 
-// Kiểm tra trạng thái server
 app.get('/api/health', (req, res) => {
     res.json({ success: true, message: 'EduSystem API is running successfully!' });
 });
 
-// Đăng ký tài khoản học sinh mới
+// Đăng ký tài khoản học sinh
 app.post('/api/register', async (req, res) => {
     try {
         const { fullname, username, password } = req.body;
@@ -112,10 +110,7 @@ app.post('/api/register', async (req, res) => {
             username: safeUsername,
             fullname: fullname.trim(),
             passwordHash: hash,
-            role: 'student',
-            avatar: '',
-            mcion: 0,
-            inventory: []
+            role: 'student'
         });
 
         res.json({ success: true, message: 'Đăng ký tài khoản thành công!' });
@@ -124,7 +119,7 @@ app.post('/api/register', async (req, res) => {
     }
 });
 
-// Đăng nhập phân quyền (Học sinh / Admin)
+// Đăng nhập phân quyền
 app.post('/api/login', async (req, res) => {
     try {
         const { username, password, role } = req.body;
@@ -164,9 +159,7 @@ app.post('/api/login', async (req, res) => {
     }
 });
 
-// --- API QUẢN LÝ ĐỀ THI (Dành cho Admin) ---
-
-// 1. Lấy danh sách đề thi
+// --- API QUẢN LÝ ĐỀ THI ---
 app.get('/api/exams', async (req, res) => {
     try {
         const { subject, grade } = req.query;
@@ -181,11 +174,9 @@ app.get('/api/exams', async (req, res) => {
     }
 });
 
-// 2. Thêm đề thi mới
 app.post('/api/exams', async (req, res) => {
     try {
         const { examCode, title, subject, grade, timeLimit, questions } = req.body;
-
         if (!examCode || !subject || !grade || !questions || questions.length === 0) {
             return res.status(400).json({ success: false, message: 'Vui lòng điền đầy đủ thông tin và tạo ít nhất 1 câu hỏi!' });
         }
@@ -211,7 +202,6 @@ app.post('/api/exams', async (req, res) => {
     }
 });
 
-// 3. Xóa đề thi
 app.delete('/api/exams/:examCode', async (req, res) => {
     try {
         const { examCode } = req.params;
@@ -222,23 +212,20 @@ app.delete('/api/exams/:examCode', async (req, res) => {
     }
 });
 
-// --- API XỬ LÝ LỊCH SỬ THI & BẢNG ĐIỂM (Dành cho Học viên) ---
+// --- API KẾT QUẢ THI & LỊCH SỬ (NÂNG CẤP) ---
 
-// 1. Lưu kết quả thi ngay sau khi học viên nộp bài
+// 1. Lưu kết quả thi
 app.post('/api/results', async (req, res) => {
     try {
         const { username, examCode, examTitle, subject, grade, score, correctCount, totalQuestions } = req.body;
-        
         if (!username || !examCode) {
             return res.status(400).json({ success: false, message: 'Thiếu thông tin học viên hoặc mã đề thi!' });
         }
 
-        // Truy vấn thông tin học viên để lấy tên đầy đủ (fullname)
         const user = await User.findOne({ username });
-
         const newHistory = await History.create({
             username,
-            fullname: user ? user.fullname : '',
+            fullname: user ? user.fullname : username,
             examCode,
             examTitle: examTitle || `Đề thi ${examCode}`,
             subject: subject || 'Toán',
@@ -251,35 +238,65 @@ app.post('/api/results', async (req, res) => {
 
         res.json({ success: true, message: 'Đã lưu lịch sử thi thành công!', history: newHistory });
     } catch (e) {
-        console.error('Lỗi khi lưu kết quả thi:', e);
+        console.error('Lỗi lưu kết quả:', e);
         res.status(500).json({ success: false, message: e.message });
     }
 });
 
-// 2. Lấy danh sách lịch sử thi (hỗ trợ lọc theo username của học viên)
+// 2. Lấy danh sách lịch sử thi (Hỗ trợ lọc theo username hoặc tìm kiếm theo tên học viên/fullname cho Admin)
 app.get('/api/results', async (req, res) => {
     try {
-        const { username } = req.query;
+        const { username, search } = req.query;
         let filter = {};
-        if (username) filter.username = username;
 
-        // Truy vấn danh sách lịch sử, sắp xếp bài thi mới nhất lên đầu danh sách
+        if (username) {
+            filter.username = username;
+        }
+
+        if (search) {
+            const regex = new RegExp(search, 'i');
+            filter.$or = [
+                { username: regex },
+                { fullname: regex },
+                { examCode: regex },
+                { subject: regex }
+            ];
+        }
+
         const results = await History.find(filter).sort({ createdAt: -1 });
         res.json({ success: true, results });
     } catch (e) {
-        console.error('Lỗi khi lấy lịch sử thi:', e);
+        console.error('Lỗi lấy lịch sử:', e);
         res.status(500).json({ success: false, message: e.message });
     }
 });
 
-// --- 5. CẤU HÌNH PHỤC VỤ FRONT-END & CATCH-ALL (ĐẶT Ở DƯỚI CÙNG) ---
+// 3. API Bảng Xếp Hạng (Leaderboard) toàn hệ thống hoặc theo đề thi
+app.get('/api/leaderboard', async (req, res) => {
+    try {
+        const { examCode } = req.query;
+        let filter = {};
+        if (examCode) filter.examCode = examCode;
+
+        // Sắp xếp điểm số từ cao xuống thấp (score: -1), nếu bằng điểm thì ưu tiên nộp trước (createdAt: 1)
+        const rankings = await History.find(filter)
+            .sort({ score: -1, createdAt: 1 })
+            .limit(50);
+
+        res.json({ success: true, rankings });
+    } catch (e) {
+        console.error('Lỗi lấy bảng xếp hạng:', e);
+        res.status(500).json({ success: false, message: e.message });
+    }
+});
+
+// --- 5. CẤU HÌNH PHỤC VỤ FRONT-END ---
 app.use(express.static(path.join(__dirname, '../frontend')));
 
 app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, '../frontend/index.html'));
 });
 
-// Khởi chạy Server
 app.listen(PORT, () => {
     console.log(`🚀 Server Backend đang chạy mượt mà tại cổng ${PORT}`);
 });

@@ -1,4 +1,4 @@
-// frontend/assets/js/app.js - Đầy đủ tính năng: Đăng nhập, Quản lý Admin, Ngân hàng câu hỏi & Phòng thi trực tuyến cho Học viên
+// frontend/assets/js/app.js - Đã tối ưu cache đề thi, khắc phục hoàn toàn lỗi tải bài thi
 
 export const API_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
     ? 'http://localhost:3000/api'
@@ -9,6 +9,9 @@ let currentAuthToken = localStorage.getItem('token') || null;
 
 // Biến lưu danh sách câu hỏi tạm thời khi Admin tạo đề thi mới
 let tempQuestions = [];
+
+// Biến lưu trữ cache danh sách đề thi cho học viên (giúp khắc phục triệt để lỗi gọi API riêng lẻ)
+let studentExamsCache = [];
 
 document.addEventListener('DOMContentLoaded', () => {
     renderAppView();
@@ -499,6 +502,9 @@ async function fetchExamsForStudent() {
         const data = await res.json();
 
         if (data.success && data.exams.length > 0) {
+            // Lưu cache dữ liệu đề thi để xử lý chuyển sang phòng thi an toàn tuyệt đối
+            studentExamsCache = data.exams;
+
             container.innerHTML = data.exams.map(exam => `
                 <div class="bg-white dark:bg-gray-800 rounded-xl p-5 shadow-md border border-gray-100 dark:border-gray-700 flex flex-col justify-between hover:shadow-lg transition">
                     <div>
@@ -526,22 +532,14 @@ async function fetchExamsForStudent() {
     }
 }
 
-// --- HÀM BẮT ĐẦU LÀM BÀI THI ---
-window.startExam = async function(examCode) {
-    try {
-        const res = await fetch(`${API_URL}/exams/${examCode}`);
-        const data = await res.json();
-
-        if (!data.success || !data.exam) {
-            alert('Không tìm thấy thông tin đề thi!');
-            return;
-        }
-
-        const exam = data.exam;
-        renderExamInterface(exam);
-    } catch (err) {
-        alert('Lỗi tải đề thi!');
+// --- HÀM BẮT ĐẦU LÀM BÀI THI (Sử dụng dữ liệu từ Cache, không gọi API riêng lẻ) ---
+window.startExam = function(examCode) {
+    const exam = studentExamsCache.find(e => e.examCode === examCode);
+    if (!exam) {
+        alert('Không tìm thấy thông tin đề thi! Vui lòng tải lại trang.');
+        return;
     }
+    renderExamInterface(exam);
 };
 
 function renderExamInterface(exam) {

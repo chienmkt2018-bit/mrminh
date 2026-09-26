@@ -3,7 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const mongoose = require('mongoose');
 const jwt = require('jsonwebtoken');
-const bcrypt = require('bcryptjs');
+const bcrypt = require('bcryptjs'); // Sử dụng nhất quán bcryptjs
 const { v4: uuidv4 } = require('uuid');
 const path = require('path');
 
@@ -65,7 +65,25 @@ const User = mongoose.model('User', UserSchema);
 const Exam = mongoose.model('Exam', ExamSchema);
 const History = mongoose.model('History', HistorySchema);
 
-// --- 3. KHỞI TẠO ADMIN MẶC ĐỊNH ---
+// --- 3. MIDDLEWARE XÁC THỰC TOKEN ---
+const verifyToken = (req, res, next) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1]; // Lấy token từ Bearer Token
+  
+  if (!token) {
+    return res.status(401).json({ success: false, message: 'Chưa cung cấp token xác thực!' });
+  }
+  
+  jwt.verify(token, JWT_SECRET, (err, user) => {
+    if (err) {
+      return res.status(403).json({ success: false, message: 'Token không hợp lệ hoặc đã hết hạn!' });
+    }
+    req.user = user; // Lưu thông tin payload (username, role) vào request
+    next();
+  });
+};
+
+// --- 4. KHỞI TẠO ADMIN MẶC ĐỊNH ---
 async function initDefaultAdmin() {
     try {
         const existingAdmin = await User.findOne({ username: 'admin' });
@@ -84,7 +102,7 @@ async function initDefaultAdmin() {
     }
 }
 
-// --- 4. API ENDPOINTS ---
+// --- 5. API ENDPOINTS ---
 
 app.get('/api/health', (req, res) => {
     res.json({ success: true, message: 'EduSystem API is running successfully!' });
@@ -152,6 +170,48 @@ app.post('/api/login', async (req, res) => {
     } catch (e) {
         res.status(500).json({ success: false, message: e.message });
     }
+});
+
+// API Đổi mật khẩu (Đã chỉnh sửa khớp với UserSchema và Token payload)
+app.put('/api/change-password', verifyToken, async (req, res) => {
+  try {
+    const { currentPassword, newPassword, confirmPassword } = req.body;
+
+    // Kiểm tra dữ liệu đầu vào
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      return res.status(400).json({ success: false, message: 'Vui lòng điền đầy đủ thông tin.' });
+    }
+
+    // Kiểm tra mật khẩu mới và xác nhận có khớp không
+    if (newPassword !== confirmPassword) {
+      return res.status(400).json({ success: false, message: 'Mật khẩu mới và xác nhận mật khẩu không khớp.' });
+    }
+
+    // Tìm user theo username lấy từ token đã được xác thực
+    const user = await User.findOne({ username: req.user.username });
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy người dùng.' });
+    }
+
+    // Kiểm tra mật khẩu hiện tại có đúng không (so sánh với passwordHash)
+    const isMatch = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (!isMatch) {
+      return res.status(400).json({ success: false, message: 'Mật khẩu hiện tại không chính xác.' });
+    }
+
+    // Mã hóa mật khẩu mới và lưu vào trường passwordHash
+    const salt = await bcrypt.genSalt(10);
+    user.passwordHash = await bcrypt.hash(newPassword, salt);
+    
+    // Lưu lại vào DB
+    await user.save();
+
+    return res.status(200).json({ success: true, message: 'Đổi mật khẩu thành công!' });
+
+  } catch (error) {
+    console.error('Lỗi server khi đổi mật khẩu:', error);
+    return res.status(500).json({ success: false, message: 'Lỗi server, vui lòng thử lại sau.' });
+  }
 });
 
 // Quản lý đề thi

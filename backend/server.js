@@ -158,6 +158,63 @@ app.post('/api/login', async (req, res) => {
         res.status(500).json({ success: false, message: e.message });
     }
 });
+// --- API QUẢN LÝ ĐỀ THI (Dành cho Admin) ---
+
+// 1. Lấy danh sách đề thi
+app.get('/api/exams', async (req, res) => {
+    try {
+        const { subject, grade } = req.query;
+        let filter = {};
+        if (subject) filter.subject = subject;
+        if (grade) filter.grade = grade;
+
+        const exams = await Exam.find(filter).sort({ createdAt: -1 });
+        res.json({ success: true, exams });
+    } catch (e) {
+        res.status(500).json({ success: false, message: e.message });
+    }
+});
+
+// 2. Thêm đề thi mới
+app.post('/api/exams', async (req, res) => {
+    try {
+        const { examCode, title, subject, grade, timeLimit, questions } = req.body;
+
+        if (!examCode || !subject || !grade || !questions || questions.length === 0) {
+            return res.status(400).json({ success: false, message: 'Vui lòng điền đầy đủ thông tin và tạo ít nhất 1 câu hỏi!' });
+        }
+
+        const safeCode = examCode.trim().toUpperCase();
+        const exists = await Exam.findOne({ examCode: safeCode });
+        if (exists) {
+            return res.status(409).json({ success: false, message: 'Mã đề thi này đã tồn tại trên hệ thống!' });
+        }
+
+        const newExam = await Exam.create({
+            examCode: safeCode,
+            title: title || `Đề thi ${subject} - ${grade}`,
+            subject,
+            grade,
+            timeLimit: Number(timeLimit) || 30,
+            questions
+        });
+
+        res.json({ success: true, message: 'Thêm đề thi mới thành công!', exam: newExam });
+    } catch (e) {
+        res.status(500).json({ success: false, message: e.message });
+    }
+});
+
+// 3. Xóa đề thi
+app.delete('/api/exams/:examCode', async (req, res) => {
+    try {
+        const { examCode } = req.params;
+        await Exam.deleteOne({ examCode });
+        res.json({ success: true, message: 'Đã xóa đề thi thành công!' });
+    } catch (e) {
+        res.status(500).json({ success: false, message: e.message });
+    }
+});
 
 // --- 5. CẤU HÌNH PHỤC VỤ FRONT-END & CATCH-ALL (ĐẶT Ở DƯỚI CÙNG) ---
 app.use(express.static(path.join(__dirname, '../frontend')));

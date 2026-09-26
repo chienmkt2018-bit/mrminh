@@ -1,4 +1,4 @@
-// backend/server.js - Đã bổ sung API /api/admin/stats cho Admin Dashboard
+// backend/server.js - Backend hỗ trợ API quản trị và học tập
 const express = require('express');
 const cors = require('cors');
 const mongoose = require('mongoose');
@@ -27,7 +27,7 @@ if (!MONGODB_URI) {
         .catch(err => console.error('❌ Lỗi kết nối MongoDB:', err));
 }
 
-// --- 2. SCHEMAS & MODELS (Cơ sở dữ liệu) ---
+// --- 2. SCHEMAS & MODELS ---
 const UserSchema = new mongoose.Schema({
     username: { type: String, required: true, unique: true },
     fullname: { type: String, default: '' },
@@ -58,15 +58,14 @@ const HistorySchema = new mongoose.Schema({
     correctCount: { type: Number, default: 0 },
     totalQuestions: { type: Number, default: 0 },
     score: { type: Number, default: 0 },
-    time: { type: String, default: '' },
-    earnedMcion: { type: Number, default: 0 }
+    time: { type: String, default: '' }
 }, { timestamps: true });
 
 const User = mongoose.model('User', UserSchema);
 const Exam = mongoose.model('Exam', ExamSchema);
 const History = mongoose.model('History', HistorySchema);
 
-// --- 3. KHỞI TẠO TÀI KHOẢN ADMIN MẶC ĐỊNH ---
+// --- 3. KHỞI TẠO ADMIN MẶC ĐỊNH ---
 async function initDefaultAdmin() {
     try {
         const existingAdmin = await User.findOne({ username: 'admin' });
@@ -119,10 +118,10 @@ app.post('/api/register', async (req, res) => {
     }
 });
 
-// Đăng nhập phân quyền
+// Đăng nhập hệ thống
 app.post('/api/login', async (req, res) => {
     try {
-        const { username, password, role } = req.body;
+        const { username, password } = req.body;
         if (!username || !password) {
             return res.status(400).json({ success: false, message: 'Vui lòng nhập tên đăng nhập và mật khẩu!' });
         }
@@ -131,10 +130,6 @@ app.post('/api/login', async (req, res) => {
         const user = await User.findOne({ username: safeUsername });
         if (!user) {
             return res.status(401).json({ success: false, message: 'Tài khoản không tồn tại!' });
-        }
-
-        if (role && user.role !== role) {
-            return res.status(401).json({ success: false, message: 'Sai vai trò đăng nhập hệ thống!' });
         }
 
         const isMatch = await bcrypt.compare(password, user.passwordHash);
@@ -159,7 +154,7 @@ app.post('/api/login', async (req, res) => {
     }
 });
 
-// --- API QUẢN LÝ ĐỀ THI ---
+// Quản lý đề thi
 app.get('/api/exams', async (req, res) => {
     try {
         const { subject, grade } = req.query;
@@ -178,13 +173,13 @@ app.post('/api/exams', async (req, res) => {
     try {
         const { examCode, title, subject, grade, timeLimit, questions } = req.body;
         if (!examCode || !subject || !grade || !questions || questions.length === 0) {
-            return res.status(400).json({ success: false, message: 'Vui lòng điền đầy đủ thông tin và tạo ít nhất 1 câu hỏi!' });
+            return res.status(400).json({ success: false, message: 'Vui lòng điền đủ thông tin và tạo ít nhất 1 câu hỏi!' });
         }
 
         const safeCode = examCode.trim().toUpperCase();
         const exists = await Exam.findOne({ examCode: safeCode });
         if (exists) {
-            return res.status(409).json({ success: false, message: 'Mã đề thi này đã tồn tại trên hệ thống!' });
+            return res.status(409).json({ success: false, message: 'Mã đề thi này đã tồn tại!' });
         }
 
         const newExam = await Exam.create({
@@ -212,12 +207,12 @@ app.delete('/api/exams/:examCode', async (req, res) => {
     }
 });
 
-// --- API KẾT QUẢ THI & LỊCH SỬ ---
+// Lịch sử thi & Kết quả
 app.post('/api/results', async (req, res) => {
     try {
         const { username, examCode, examTitle, subject, grade, score, correctCount, totalQuestions } = req.body;
         if (!username || !examCode) {
-            return res.status(400).json({ success: false, message: 'Thiếu thông tin học viên hoặc mã đề thi!' });
+            return res.status(400).json({ success: false, message: 'Thiếu thông tin kết quả bài thi!' });
         }
 
         const user = await User.findOne({ username });
@@ -236,7 +231,6 @@ app.post('/api/results', async (req, res) => {
 
         res.json({ success: true, message: 'Đã lưu lịch sử thi thành công!', history: newHistory });
     } catch (e) {
-        console.error('Lỗi lưu kết quả:', e);
         res.status(500).json({ success: false, message: e.message });
     }
 });
@@ -260,7 +254,6 @@ app.get('/api/results', async (req, res) => {
         const results = await History.find(filter).sort({ createdAt: -1 });
         res.json({ success: true, results });
     } catch (e) {
-        console.error('Lỗi lấy lịch sử:', e);
         res.status(500).json({ success: false, message: e.message });
     }
 });
@@ -277,40 +270,30 @@ app.get('/api/leaderboard', async (req, res) => {
 
         res.json({ success: true, rankings });
     } catch (e) {
-        console.error('Lỗi lấy bảng xếp hạng:', e);
         res.status(500).json({ success: false, message: e.message });
     }
 });
 
-// --- API THỐNG KÊ DASHBOARD ADMIN (MỚI) ---
+// Thống kê Dashboard Admin
 app.get('/api/admin/stats', async (req, res) => {
     try {
-        // 1. Tổng học sinh (chỉ đếm role student)
         const totalStudents = await User.countDocuments({ role: 'student' });
-        
-        // 2. Tổng đề thi
         const totalExams = await Exam.countDocuments({});
-        
-        // 3. Tổng lượt thi
         const totalAttempts = await History.countDocuments({});
         
-        // 4. Điểm trung bình toàn hệ thống
         const avgResult = await History.aggregate([
             { $group: { _id: null, avgScore: { $avg: '$score' } } }
         ]);
         const averageScore = avgResult.length > 0 ? parseFloat(avgResult[0].avgScore.toFixed(2)) : 0;
 
-        // 5. Top học sinh xuất sắc nhất (lấy top 5 bài điểm cao nhất)
         const topStudents = await History.find()
             .sort({ score: -1, createdAt: 1 })
             .limit(5);
 
-        // Dữ liệu cho biểu đồ: Lượt thi theo môn học
         const attemptsBySubject = await History.aggregate([
             { $group: { _id: '$subject', count: {$sum: 1 } } }
         ]);
 
-        // Dữ liệu cho biểu đồ: Đề thi theo môn học
         const examsBySubject = await Exam.aggregate([
             { $group: { _id: '$subject', count: {$sum: 1 } } }
         ]);
@@ -328,12 +311,11 @@ app.get('/api/admin/stats', async (req, res) => {
             }
         });
     } catch (e) {
-        console.error('Lỗi khi lấy thống kê admin:', e);
         res.status(500).json({ success: false, message: e.message });
     }
 });
 
-// --- 5. CẤU HÌNH PHỤC VỤ FRONT-END ---
+// Phục vụ Frontend
 app.use(express.static(path.join(__dirname, '../frontend')));
 
 app.get('*', (req, res) => {
@@ -341,5 +323,5 @@ app.get('*', (req, res) => {
 });
 
 app.listen(PORT, () => {
-    console.log(`🚀 Server Backend đang chạy mượt mà tại cổng ${PORT}`);
+    console.log(`🚀 Server Backend đang chạy tại cổng ${PORT}`);
 });

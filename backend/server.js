@@ -1,4 +1,4 @@
-// backend/server.js - Đã nâng cấp API Lịch sử thi, Lọc theo tên học viên & Bảng xếp hạng
+// backend/server.js - Đã bổ sung API /api/admin/stats cho Admin Dashboard
 const express = require('express');
 const cors = require('cors');
 const mongoose = require('mongoose');
@@ -212,9 +212,7 @@ app.delete('/api/exams/:examCode', async (req, res) => {
     }
 });
 
-// --- API KẾT QUẢ THI & LỊCH SỬ (NÂNG CẤP) ---
-
-// 1. Lưu kết quả thi
+// --- API KẾT QUẢ THI & LỊCH SỬ ---
 app.post('/api/results', async (req, res) => {
     try {
         const { username, examCode, examTitle, subject, grade, score, correctCount, totalQuestions } = req.body;
@@ -243,16 +241,12 @@ app.post('/api/results', async (req, res) => {
     }
 });
 
-// 2. Lấy danh sách lịch sử thi (Hỗ trợ lọc theo username hoặc tìm kiếm theo tên học viên/fullname cho Admin)
 app.get('/api/results', async (req, res) => {
     try {
         const { username, search } = req.query;
         let filter = {};
 
-        if (username) {
-            filter.username = username;
-        }
-
+        if (username) filter.username = username;
         if (search) {
             const regex = new RegExp(search, 'i');
             filter.$or = [
@@ -271,14 +265,12 @@ app.get('/api/results', async (req, res) => {
     }
 });
 
-// 3. API Bảng Xếp Hạng (Leaderboard) toàn hệ thống hoặc theo đề thi
 app.get('/api/leaderboard', async (req, res) => {
     try {
         const { examCode } = req.query;
         let filter = {};
         if (examCode) filter.examCode = examCode;
 
-        // Sắp xếp điểm số từ cao xuống thấp (score: -1), nếu bằng điểm thì ưu tiên nộp trước (createdAt: 1)
         const rankings = await History.find(filter)
             .sort({ score: -1, createdAt: 1 })
             .limit(50);
@@ -286,6 +278,57 @@ app.get('/api/leaderboard', async (req, res) => {
         res.json({ success: true, rankings });
     } catch (e) {
         console.error('Lỗi lấy bảng xếp hạng:', e);
+        res.status(500).json({ success: false, message: e.message });
+    }
+});
+
+// --- API THỐNG KÊ DASHBOARD ADMIN (MỚI) ---
+app.get('/api/admin/stats', async (req, res) => {
+    try {
+        // 1. Tổng học sinh (chỉ đếm role student)
+        const totalStudents = await User.countDocuments({ role: 'student' });
+        
+        // 2. Tổng đề thi
+        const totalExams = await Exam.countDocuments({});
+        
+        // 3. Tổng lượt thi
+        const totalAttempts = await History.countDocuments({});
+        
+        // 4. Điểm trung bình toàn hệ thống
+        const avgResult = await History.aggregate([
+            { $group: { _id: null, avgScore: { $avg: '$score' } } }
+        ]);
+        const averageScore = avgResult.length > 0 ? parseFloat(avgResult[0].avgScore.toFixed(2)) : 0;
+
+        // 5. Top học sinh xuất sắc nhất (lấy top 5 bài điểm cao nhất)
+        const topStudents = await History.find()
+            .sort({ score: -1, createdAt: 1 })
+            .limit(5);
+
+        // Dữ liệu cho biểu đồ: Lượt thi theo môn học
+        const attemptsBySubject = await History.aggregate([
+            { $group: { _id: '$subject', count: {$sum: 1 } } }
+        ]);
+
+        // Dữ liệu cho biểu đồ: Đề thi theo môn học
+        const examsBySubject = await Exam.aggregate([
+            { $group: { _id: '$subject', count: {$sum: 1 } } }
+        ]);
+
+        res.json({
+            success: true,
+            stats: {
+                totalStudents,
+                totalExams,
+                totalAttempts,
+                averageScore,
+                topStudents,
+                attemptsBySubject,
+                examsBySubject
+            }
+        });
+    } catch (e) {
+        console.error('Lỗi khi lấy thống kê admin:', e);
         res.status(500).json({ success: false, message: e.message });
     }
 });

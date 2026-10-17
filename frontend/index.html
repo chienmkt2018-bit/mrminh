@@ -1,51 +1,79 @@
 <!DOCTYPE html>
+
 <html lang="vi" class="light">
+
 <head>
+
     <meta charset="UTF-8">
+
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Học học nữa học mãi - Nền tảng học tập trực tuyến</title>
-    
+
+    <title>Học học nữa học mãi</title>
+
     <!-- Tailwind CSS CDN -->
+
     <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    colors: {
-                        brand: { 50: '#eff6ff', 500: '#3b82f6', 600: '#2563eb', 700: '#1d4ed8' }
-                    }
-                }
-            }
-        }
-    </script>
 
     <!-- Font Awesome Icons -->
+
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
+
     <!-- Chart.js cho Dashboard Admin -->
+
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    
+
     <!-- Thư viện đọc file Excel (SheetJS) -->
+
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    
-    <!-- Custom CSS tùy chỉnh bổ sung -->
-    <link rel="stylesheet" href="./assets/css/custom.css">
+
 </head>
-<body class="bg-gray-50 dark:bg-gray-950 text-gray-800 dark:text-gray-100 min-h-screen flex flex-col font-sans transition-colors duration-300">
 
-    <!-- Container ứng dụng SPA (Render động qua app.js & exam.js) -->
-    <div id="app" class="flex-1 flex flex-col">
-        <!-- Trạng thái chờ khởi tạo ứng dụng -->
-        <div class="flex-1 flex items-center justify-center">
+<body class="bg-gray-50 dark:bg-gray-900 text-gray-800 dark:text-gray-100 min-h-screen flex flex-col">
+
+
+
+    <!-- Header -->
+
+    <header class="bg-white dark:bg-gray-800 shadow-sm p-4 flex justify-between items-center">
+
+        <h1 class="font-bold text-xl text-blue-600 flex items-center gap-2">
+
+            <i class="fa-solid fa-graduation-cap"></i> Học học nữa học mãi
+
+        </h1>
+
+        <div id="user-info" class="text-sm font-medium"></div>
+
+    </header>
+
+    
+
+    <!-- Main Content Container (SPA Dynamic View) -->
+
+    <main class="flex-grow max-w-7xl mx-auto p-6 w-full">
+
+        <div id="app-view">
+
+            <!-- Nội dung sẽ được render tự động thông qua app.js -->
+
             <div class="text-center py-12 text-gray-400">
-                <i class="fa-solid fa-spinner fa-spin text-3xl mb-3 text-blue-600"></i>
-                <p class="text-sm font-medium">Đang tải hệ thống Học học nữa học mãi...</p>
-            </div>
-        </div>
-    </div>
 
-    <!-- Script JavaScript chính theo chuẩn ES Modules -->
+                <i class="fa-solid fa-spinner fa-spin text-2xl mb-2"></i>
+
+                <p>Đang tải ứng dụng...</p>
+
+            </div>
+
+        </div>
+
+    </main>
+
+
+
+    <!-- Nhập JavaScript theo chuẩn ES Modules -->
+
     <script type="module" src="./assets/js/app.js"></script>
+
 </body>
+
 </html>

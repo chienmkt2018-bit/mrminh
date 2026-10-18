@@ -44,6 +44,12 @@ function readCurrentUser() {
 let currentUser = readCurrentUser();
 let currentAuthToken = readStoredValue('token');
 
+function authHeaders(extraHeaders = {}) {
+    const headers = { ...extraHeaders };
+    if (currentAuthToken) headers.Authorization = `Bearer ${currentAuthToken}`;
+    return headers;
+}
+
 let tempQuestions = [];
 let studentExamsCache = [];
 
@@ -369,7 +375,7 @@ async function loadAdminStatsTab() {
         const timeoutId = setTimeout(() => controller.abort(), 12000);
         let res;
         try {
-            res = await fetch(`${API_URL}/admin/stats`, { signal: controller.signal });
+            res = await fetch(`${API_URL}/admin/stats`, { headers: authHeaders(), signal: controller.signal });
         } finally {
             clearTimeout(timeoutId);
         }
@@ -546,7 +552,7 @@ async function fetchExamsListForAdmin() {
     if (!container) return;
 
     try {
-        const res = await fetch(`${API_URL}/exams?subject=${encodeURIComponent(subject)}&grade=${encodeURIComponent(grade)}`);
+        const res = await fetch(`${API_URL}/exams?subject=${encodeURIComponent(subject)}&grade=${encodeURIComponent(grade)}`, { headers: authHeaders() });
         const data = await res.json();
         if (data.success && data.exams.length > 0) {
             container.innerHTML = data.exams.map(exam => `
@@ -631,7 +637,7 @@ function setupAdminModalEvents() {
         try {
             const res = await fetch(`${API_URL}/exams`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: authHeaders({ 'Content-Type': 'application/json' }),
                 body: JSON.stringify({ examCode, title: `Đề thi ${subject} - ${grade}`, subject, grade, timeLimit, questions: tempQuestions })
             });
             const data = await res.json();
@@ -674,7 +680,7 @@ window.removeTempQuestion = (idx) => {
 
 window.deleteExam = async (code) => {
     if (!confirm(`Xóa đề thi ${code}?`)) return;
-    const res = await fetch(`${API_URL}/exams/${code}`, { method: 'DELETE' });
+    const res = await fetch(`${API_URL}/exams/${encodeURIComponent(code)}`, { method: 'DELETE', headers: authHeaders() });
     const data = await res.json();
     if (data.success) fetchExamsListForAdmin();
 };
@@ -709,7 +715,7 @@ async function fetchAdminHistories(searchQuery) {
     if (!historyListContainer) return;
 
     try {
-        const res = await fetch(`${API_URL}/results?search=${encodeURIComponent(searchQuery)}`);
+        const res = await fetch(`${API_URL}/results?search=${encodeURIComponent(searchQuery)}`, { headers: authHeaders() });
         const data = await res.json();
 
         if (data.success && data.results.length > 0) {
@@ -816,7 +822,7 @@ async function loadLeaderboardTab(targetContainerId) {
 
     const rankingListEl = document.getElementById('leaderboard-ranking-list');
     try {
-        const res = await fetch(`${API_URL}/leaderboard`);
+        const res = await fetch(`${API_URL}/leaderboard`, { headers: authHeaders() });
         const data = await res.json();
 
         if (data.success && data.rankings.length > 0) {
@@ -907,7 +913,7 @@ async function fetchExamsForStudent() {
     if (!container) return;
 
     try {
-        const res = await fetch(`${API_URL}/exams?subject=${encodeURIComponent(subject)}&grade=${encodeURIComponent(grade)}`);
+        const res = await fetch(`${API_URL}/exams?subject=${encodeURIComponent(subject)}&grade=${encodeURIComponent(grade)}`, { headers: authHeaders() });
         const data = await res.json();
         if (data.success && data.exams.length > 0) {
             studentExamsCache = data.exams;
@@ -953,7 +959,7 @@ async function loadExamHistoryTab() {
 
     const historyContainer = document.getElementById('history-list-container');
     try {
-        const res = await fetch(`${API_URL}/results?username=${encodeURIComponent(currentUser.username)}`);
+        const res = await fetch(`${API_URL}/results`, { headers: authHeaders() });
         const data = await res.json();
 
         if (data.success && data.results.length > 0) {
@@ -1079,35 +1085,23 @@ function renderExamInterface(exam) {
 }
 
 async function processAndSubmitExam(exam, userAnswers) {
-    let correctCount = 0;
-    const totalQuestions = exam.questions.length;
-
-    exam.questions.forEach((q, idx) => {
-        if (userAnswers[idx] === q.answer) correctCount++;
-    });
-
-    const score = parseFloat(((correctCount / totalQuestions) * 10).toFixed(2));
-
     try {
-        await fetch(`${API_URL}/results`, {
+        const response = await fetch(`${API_URL}/results`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                username: currentUser.username,
-                examCode: exam.examCode,
-                examTitle: exam.title || 'Đề thi ' + exam.subject,
-                subject: exam.subject,
-                grade: exam.grade,
-                score,
-                correctCount,
-                totalQuestions
-            })
+            headers: authHeaders({ 'Content-Type': 'application/json' }),
+            body: JSON.stringify({ examCode: exam.examCode, answers: userAnswers })
         });
-    } catch (err) {
-        console.error('Lỗi khi lưu kết quả:', err);
+        const data = await response.json();
+        if (!response.ok || !data.success || !data.result) {
+            throw new Error(data.message || `Không thể nộp bài (HTTP ${response.status}).`);
+        }
+        const { correctCount, totalQuestions, score } = data.result;
+        renderResultScreen(exam, userAnswers, correctCount, score, totalQuestions);
+    } catch (error) {
+        console.error('Lỗi khi chấm/lưu kết quả:', error);
+        alert(error.message || 'Không thể nộp bài. Vui lòng đăng nhập lại và thử lại.');
+        renderAppView();
     }
-
-    renderResultScreen(exam, userAnswers, correctCount, score, totalQuestions);
 }
 
 function renderResultScreen(exam, userAnswers, correctCount, score, totalQuestions) {

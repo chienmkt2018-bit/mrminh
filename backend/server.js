@@ -138,26 +138,43 @@ app.post('/api/register', async (req, res) => {
 
 // Đăng nhập hệ thống
 app.post('/api/login', async (req, res) => {
+    const startedAt = Date.now();
+    const requestId = Math.random().toString(36).slice(2, 8);
     try {
-        const { username, password } = req.body;
+        const { username, password } = req.body || {};
         if (!username || !password) {
             return res.status(400).json({ success: false, message: 'Vui lòng nhập tên đăng nhập và mật khẩu!' });
         }
 
-        const safeUsername = username.trim().toLowerCase();
-        const user = await User.findOne({ username: safeUsername });
+        const safeUsername = String(username).trim().toLowerCase();
+        console.log(`[LOGIN:${requestId}] Bắt đầu xác thực username="${safeUsername}", MongoDB state=${mongoose.connection.readyState}`);
+
+        // Không để yêu cầu đăng nhập bị treo trong hàng đợi kết nối MongoDB.
+        if (mongoose.connection.readyState !== 1) {
+            console.error(`[LOGIN:${requestId}] MongoDB chưa sẵn sàng (state=${mongoose.connection.readyState})`);
+            return res.status(503).json({
+                success: false,
+                message: 'Cơ sở dữ liệu đang kết nối hoặc tạm thời không khả dụng. Vui lòng thử lại sau.'
+            });
+        }
+
+        console.log(`[LOGIN:${requestId}] Đang tìm tài khoản`);
+        const user = await User.findOne({ username: safeUsername }).maxTimeMS(8000).exec();
+        console.log(`[LOGIN:${requestId}] Kết quả tìm tài khoản: ${user ? 'found' : 'not found'}; ${Date.now() - startedAt}ms`);
         if (!user) {
             return res.status(401).json({ success: false, message: 'Tài khoản không tồn tại!' });
         }
 
-        const isMatch = await bcrypt.compare(password, user.passwordHash);
+        console.log(`[LOGIN:${requestId}] Đang kiểm tra mật khẩu`);
+        const isMatch = await bcrypt.compare(String(password), user.passwordHash);
+        console.log(`[LOGIN:${requestId}] Kiểm tra mật khẩu hoàn tất; ${Date.now() - startedAt}ms`);
         if (!isMatch) {
             return res.status(401).json({ success: false, message: 'Mật khẩu đăng nhập không chính xác!' });
         }
 
         const token = jwt.sign({ username: user.username, role: user.role }, JWT_SECRET, { expiresIn: '7d' });
-        
-        res.json({
+        console.log(`[LOGIN:${requestId}] Đăng nhập thành công, role=${user.role}; ${Date.now() - startedAt}ms`);
+        return res.json({
             success: true,
             token,
             username: user.username,
@@ -168,7 +185,16 @@ app.post('/api/login', async (req, res) => {
             inventory: user.inventory
         });
     } catch (e) {
-        res.status(500).json({ success: false, message: e.message });
+        console.error(`[LOGIN:${requestId}] Lỗi sau ${Date.now() - startedAt}ms:`, e);
+        if (!res.headersSent) {
+            const timedOut = e && (e.code === 50 || e.code === 'ETIMEOUT' || /timed out|timeout/i.test(e.message || ''));
+            return res.status(timedOut ? 504 : 500).json({
+                success: false,
+                message: timedOut
+                    ? 'Truy vấn tài khoản quá thời gian cho phép. Hãy kiểm tra kết nối MongoDB và Render Logs.'
+                    : 'Máy chủ gặp lỗi khi xác thực tài khoản. Hãy kiểm tra Render Logs.'
+            });
+        }
     }
 });
 

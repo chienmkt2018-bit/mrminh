@@ -1,0 +1,102 @@
+/* Learnify Admin Dashboard — additive styling; preserves existing app styles/API */
+#app-view .learnify-admin-layout {
+  display: grid;
+  grid-template-columns: 236px minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+#app-view .learnify-admin-sidebar {
+  position: sticky;
+  top: 94px;
+  min-width: 0;
+  padding: 20px 14px;
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+#app-view .learnify-sidebar-brand {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 4px 8px 22px;
+  border-bottom: 1px solid var(--border);
+}
+#app-view .learnify-sidebar-logo {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  flex: 0 0 42px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #4776f5, #7254df);
+  color: #fff;
+  font-size: 19px;
+}
+#app-view .learnify-sidebar-name { font-size: 16px; font-weight: 800; line-height: 1.2; letter-spacing: -.04em; }
+#app-view .learnify-sidebar-caption { margin-top: 4px; color: var(--muted); font-size: 10px; font-weight: 700; letter-spacing: .12em; }
+#app-view .learnify-nav-label { margin: 22px 10px 9px; color: var(--muted); font-size: 10px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+#app-view .learnify-admin-nav { display: grid; gap: 7px; }
+#app-view .learnify-nav-button {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  width: 100%;
+  min-height: 44px;
+  padding: 11px 12px;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--muted);
+  text-align: left;
+  font-size: 12px;
+  font-weight: 700;
+  box-shadow: none;
+}
+#app-view .learnify-nav-button:hover { background: var(--surface-soft); color: var(--text); }
+#app-view .learnify-nav-button.is-active {
+  border-color: rgba(79, 113, 238, .18);
+  background: rgba(79, 113, 238, .12);
+  color: var(--primary);
+}
+#app-view .learnify-admin-main { min-width: 0; }
+#app-view .learnify-admin-main > .space-y-6 { min-width: 0; }
+#app-view .learnify-admin-main .learnify-admin-heading {
+  margin-bottom: 22px;
+  padding: 25px 27px;
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow);
+}
+#app-view .learnify-admin-heading h2 { color: var(--text) !important; font-size: clamp(21px, 2vw, 27px); letter-spacing: -.04em; }
+#app-view .learnify-admin-heading h2 i { color: var(--primary) !important; }
+#app-view .learnify-admin-heading p { color: var(--muted) !important; font-size: 12px; }
+#app-view .learnify-admin-heading .scrollbar-none { display: none; }
+#app-view #admin-main-content { gap: 22px; }
+#app-view #admin-main-content > .space-y-6 { gap: 22px; }
+#app-view #admin-main-content .grid > .bg-white,
+#app-view #admin-main-content .bg-white {
+  border-color: var(--border) !important;
+  border-radius: 18px;
+  box-shadow: var(--shadow);
+}
+#app-view #admin-main-content canvas { max-width: 100%; }
+#app-view #admin-main-content table { width: 100%; }
+#app-view #admin-main-content tbody tr:hover { background: var(--surface-soft); }
+#app-view #admin-main-content .bg-gray-800 { background: var(--surface) !important; color: var(--text); }
+html.dark #app-view #admin-main-content .dark\:bg-gray-800 { background: var(--surface); }
+@media (max-width: 920px) {
+  #app-view .learnify-admin-layout { grid-template-columns: 1fr; gap: 14px; }
+  #app-view .learnify-admin-sidebar { position: static; padding: 12px; }
+  #app-view .learnify-sidebar-brand { padding: 2px 5px 12px; }
+  #app-view .learnify-nav-label { margin-top: 12px; }
+  #app-view .learnify-admin-nav { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  #app-view .learnify-nav-button { min-height: 40px; }
+}
+@media (max-width: 520px) {
+  #app-view .learnify-admin-nav { grid-template-columns: 1fr 1fr; }
+  #app-view .learnify-admin-main .learnify-admin-heading { padding: 18px; }
+  #app-view #admin-main-content th, #app-view #admin-main-content td { padding: 10px 9px; }
+}

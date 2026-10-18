@@ -1190,9 +1190,16 @@ async function handleLoginSubmit(e) {
             role: role === 'admin' ? 'admin' : 'student'
         };
         currentAuthToken = data.token || '';
-        localStorage.setItem('currentUser', JSON.stringify(currentUser));
-        if (currentAuthToken) localStorage.setItem('token', currentAuthToken);
-        else localStorage.removeItem('token');
+
+        // Do not let blocked/full browser storage prevent a successful login
+        // from switching away from the login form.
+        try {
+            window.localStorage.setItem('currentUser', JSON.stringify(currentUser));
+            if (currentAuthToken) window.localStorage.setItem('token', currentAuthToken);
+            else window.localStorage.removeItem('token');
+        } catch (storageError) {
+            console.warn('Đăng nhập thành công nhưng không thể lưu phiên vào localStorage:', storageError);
+        }
 
         try {
             renderAppView();

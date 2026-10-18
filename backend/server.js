@@ -111,9 +111,20 @@ async function initDefaultAdmin() {
 
     try {
         const safeUsername = adminUsername.trim().toLowerCase();
-        const existingAdmin = await User.findOne({ username: safeUsername });
-        if (!existingAdmin) {
-            const passwordHash = await bcrypt.hash(adminPassword, 12);
+        const existingUser = await User.findOne({ username: safeUsername });
+        const passwordHash = await bcrypt.hash(adminPassword, 12);
+
+        if (existingUser && existingUser.role !== 'admin') {
+            console.error('❌ ADMIN_USERNAME đang trùng với tài khoản không phải Admin. Hãy chọn username quản trị riêng.');
+            return;
+        }
+
+        if (existingUser) {
+            // Khi đã cấu hình biến môi trường, đồng bộ lại mật khẩu Admin để loại bỏ mật khẩu mặc định cũ.
+            existingUser.passwordHash = passwordHash;
+            await existingUser.save();
+            console.log('🔐 Đã cập nhật mật khẩu tài khoản quản trị từ biến môi trường.');
+        } else {
             await User.create({
                 username: safeUsername,
                 fullname: 'Administrator',

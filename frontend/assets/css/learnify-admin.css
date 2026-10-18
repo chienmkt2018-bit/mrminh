@@ -100,3 +100,86 @@ html.dark #app-view #admin-main-content .dark\:bg-gray-800 { background: var(--s
   #app-view .learnify-admin-main .learnify-admin-heading { padding: 18px; }
   #app-view #admin-main-content th, #app-view #admin-main-content td { padding: 10px 9px; }
 }
+
+
+/* Visual refinement pass: clearer hierarchy, consistent surfaces, and mobile overflow */
+#app-view .learnify-admin-layout { gap: 26px; }
+#app-view .learnify-admin-sidebar { border-radius: 20px; box-shadow: 0 12px 34px rgba(25, 42, 80, .055); }
+#app-view .learnify-sidebar-logo { box-shadow: 0 7px 18px rgba(79, 113, 238, .22); }
+#app-view .learnify-sidebar-name { letter-spacing: -.035em; }
+#app-view .learnify-nav-button { position: relative; gap: 12px; transition: background .18s ease, color .18s ease, transform .18s ease; }
+#app-view .learnify-nav-button::before {
+  display: inline-grid; place-items: center; width: 20px; flex: 0 0 20px;
+  font-family: "Font Awesome 6 Free"; font-weight: 900; font-size: 14px;
+}
+#app-view #admin-tab-stats-btn::before { content: "\f080"; }
+#app-view #admin-tab-exams-btn::before { content: "\f15c"; }
+#app-view #admin-tab-history-btn::before { content: "\f1da"; }
+#app-view #admin-tab-leaderboard-btn::before { content: "\f091"; }
+#app-view .learnify-nav-button:hover { transform: translateX(2px); }
+#app-view .learnify-nav-button.is-active { box-shadow: inset 3px 0 0 var(--primary); }
+#app-view .learnify-admin-heading { position: relative; overflow: hidden; }
+#app-view .learnify-admin-heading::after {
+  content: ""; position: absolute; top: -55px; right: -45px; width: 150px; height: 150px;
+  border-radius: 50%; background: rgba(79, 113, 238, .055); pointer-events: none;
+}
+#app-view .learnify-admin-heading h2 { line-height: 1.25; }
+#app-view #admin-main-content > .space-y-6 > .grid:first-child > div,
+#app-view #admin-main-content > .bg-white,
+#app-view #admin-main-content #exam-list-container > div {
+  transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+}
+#app-view #admin-main-content > .space-y-6 > .grid:first-child > div:hover,
+#app-view #admin-main-content #exam-list-container > div:hover {
+  transform: translateY(-2px); box-shadow: 0 16px 36px rgba(25, 42, 80, .09);
+}
+#app-view #admin-main-content > .space-y-6 > .grid:first-child > div { min-height: 112px; }
+#app-view #admin-main-content h4 { letter-spacing: -.015em; }
+#app-view #admin-main-content table thead th { font-size: 10px; letter-spacing: .06em; }
+#app-view #admin-main-content table tbody tr { transition: background .15s ease; }
+#app-view #admin-main-content input,
+#app-view #admin-main-content select,
+#app-view #create-exam-modal input,
+#app-view #create-exam-modal select {
+  min-height: 38px; border-radius: 10px; transition: border-color .15s ease, box-shadow .15s ease;
+}
+#app-view #admin-main-content input:focus,
+#app-view #admin-main-content select:focus,
+#app-view #create-exam-modal input:focus,
+#app-view #create-exam-modal select:focus {
+  outline: none; border-color: #6b8afd; box-shadow: 0 0 0 3px rgba(79, 113, 238, .13);
+}
+#app-view #create-exam-modal > div { border-radius: 20px; }
+#app-view #admin-main-content button,
+#app-view #create-exam-modal button { transition: transform .16s ease, filter .16s ease; }
+#app-view #admin-main-content button:hover,
+#app-view #create-exam-modal button:hover { filter: brightness(1.025); }
+html.dark #app-view .learnify-admin-sidebar,
+html.dark #app-view .learnify-admin-heading,
+html.dark #app-view #admin-main-content .bg-white {
+  box-shadow: 0 12px 34px rgba(0, 0, 0, .14);
+}
+html.dark #app-view #admin-main-content > .space-y-6 > .grid:first-child > div:hover,
+html.dark #app-view #admin-main-content #exam-list-container > div:hover {
+  box-shadow: 0 16px 36px rgba(0, 0, 0, .22);
+}
+@media (prefers-reduced-motion: reduce) {
+  #app-view .learnify-nav-button, #app-view #admin-main-content > .space-y-6 > .grid:first-child > div,
+  #app-view #admin-main-content #exam-list-container > div { transition: none; }
+  #app-view .learnify-nav-button:hover, #app-view #admin-main-content #exam-list-container > div:hover { transform: none; }
+}
+@media (max-width: 920px) {
+  #app-view .learnify-admin-layout { gap: 16px; }
+  #app-view .learnify-admin-sidebar { border-radius: 16px; }
+  #app-view .learnify-sidebar-brand { display: none; }
+  #app-view .learnify-nav-label { margin: 2px 8px 10px; }
+  #app-view .learnify-admin-nav { gap: 8px; }
+  #app-view .learnify-nav-button { justify-content: flex-start; }
+}
+@media (max-width: 520px) {
+  #app-view .learnify-nav-button { gap: 8px; padding: 10px 9px; font-size: 11px; }
+  #app-view .learnify-nav-button::before { width: 16px; flex-basis: 16px; font-size: 12px; }
+  #app-view #admin-main-content > .space-y-6 > .grid:first-child > div { padding: 16px; min-height: 96px; }
+  #app-view #admin-main-content > .space-y-6 > .grid:first-child > div .w-12 { width: 40px; height: 40px; }
+  #app-view #admin-main-content table { font-size: 12px; }
+}

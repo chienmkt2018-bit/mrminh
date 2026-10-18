@@ -54,7 +54,7 @@
         <span>Học tập mỗi ngày, tiến bộ từng bước.</span>
     </footer>
     <script type="module" src="./assets/js/theme.js"></script>
-    <script type="module" src="./assets/js/app.js?v=20261018-admin-login-fix-5"></script>
+    <script type="module" src="./assets/js/app.js?v=20261018-admin-login-fix-6"></script>
     <script src="./assets/js/learnify-admin.js?v=20261018-admin-login-fix-3"></script>
     <script>
       // Startup watchdog: show a visible recovery panel for script errors,
@@ -129,5 +129,33 @@
         }, 8000);
       })();
     </script>
+
+    <script>
+      // Emergency UI watchdog: independently release a login button if the
+      // module's submit handler never settles. This also helps distinguish a
+      // stalled frontend request from a normal login error.
+      (() => {
+        let loginWatchdog = null;
+        document.addEventListener('submit', (event) => {
+          const form = event.target;
+          if (!form || form.id !== 'login-form') return;
+          if (loginWatchdog) window.clearTimeout(loginWatchdog);
+          const startedAt = Date.now();
+          loginWatchdog = window.setTimeout(() => {
+            const button = document.querySelector('#login-form button[type="submit"]');
+            if (!button || !button.textContent.includes('Đang đăng nhập')) return;
+            button.disabled = false;
+            button.textContent = 'Đăng Nhập';
+            const message = document.getElementById('auth-message');
+            if (message) {
+              message.className = 'mb-4 p-3 rounded-xl text-xs sm:text-sm bg-red-100 text-red-700';
+              message.textContent = 'Yêu cầu đăng nhập bị treo quá 20 giây. Nút đã được mở khóa. Hãy tải lại trang và thử lại; nếu tiếp diễn, cần kiểm tra phiên bản JavaScript đang được Render phục vụ.';
+            }
+            console.error('[LOGIN-WATCHDOG] Submit handler vẫn chưa kết thúc sau', Date.now() - startedAt, 'ms.');
+          }, 20000);
+        }, true);
+      })();
+    </script>
+
 </body>
 </html>

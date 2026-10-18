@@ -1166,16 +1166,25 @@ async function handleLoginSubmit(e) {
     let loginTimeoutId;
     try {
         const controller = new AbortController();
-        loginTimeoutId = setTimeout(() => controller.abort(), 15000);
-        const response = await fetch(`${API_URL}/login`, {
+        // Race the complete request (including JSON parsing) against a rejecting
+        // timeout. Some browser/network failures do not reliably settle fetch()
+        // after abort(), so abort alone is not enough to release the login UI.
+        const timeoutPromise = new Promise((_, reject) => {
+            loginTimeoutId = setTimeout(() => {
+                controller.abort();
+                const timeoutError = new Error('Đăng nhập quá thời gian chờ.');
+                timeoutError.name = 'TimeoutError';
+                reject(timeoutError);
+            }, 15000);
+        });
+        const requestPromise = fetch(`${API_URL}/login`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ username, password }),
             signal: controller.signal
-        });
-        // Keep the timeout active until the response body is fully read.
-        // fetch() can resolve at headers while response.json() is still pending.
-        const data = await response.json();
+        }).then(async response => ({ response, data: await response.json() }));
+
+        const { response, data } = await Promise.race([requestPromise, timeoutPromise]);
         clearTimeout(loginTimeoutId);
 
         if (!response.ok || !data.success) {
@@ -1221,8 +1230,8 @@ async function handleLoginSubmit(e) {
         }
     } catch (err) {
         console.error('Lỗi đăng nhập:', err);
-        const message = err?.name === 'AbortError'
-            ? 'Máy chủ xác thực phản hồi quá lâu (15 giây). Hãy kiểm tra Render Logs và thử lại.'
+        const message = (err?.name === 'AbortError' || err?.name === 'TimeoutError')
+            ? 'Đăng nhập quá thời gian chờ (15 giây). Giao diện đã được mở khóa; hãy thử lại và kiểm tra kết nối máy chủ.'
             : 'Không thể kết nối hoặc phản hồi từ Backend không hợp lệ. Hãy thử lại.';
         showNotification(msgBox, message, 'error');
     } finally {

@@ -6,12 +6,16 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs'); // Sử dụng nhất quán bcryptjs
 const { v4: uuidv4 } = require('uuid');
 const path = require('path');
+const crypto = require('crypto');
 
 const app = express();
 app.use(express.json({ limit: '10mb' }));
 app.use(cors());
 
-const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_jwt_key_2026';
+const JWT_SECRET = process.env.JWT_SECRET || crypto.randomBytes(32).toString('hex');
+if (!process.env.JWT_SECRET) {
+    console.warn('⚠️ JWT_SECRET chưa được cấu hình. Token sẽ mất hiệu lực khi máy chủ khởi động lại; hãy đặt JWT_SECRET trong môi trường triển khai.');
+}
 const PORT = process.env.PORT || 3000;
 const MONGODB_URI = process.env.MONGODB_URI;
 
@@ -65,40 +69,61 @@ const User = mongoose.model('User', UserSchema);
 const Exam = mongoose.model('Exam', ExamSchema);
 const History = mongoose.model('History', HistorySchema);
 
-// --- 3. MIDDLEWARE XÁC THỰC TOKEN ---
+// --- 3. MIDDLEWARE XÁC THỰC VÀ PHÂN QUYỀN ---
 const verifyToken = (req, res, next) => {
-  const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1]; // Lấy token từ Bearer Token
-  
-  if (!token) {
-    return res.status(401).json({ success: false, message: 'Chưa cung cấp token xác thực!' });
-  }
-  
-  jwt.verify(token, JWT_SECRET, (err, user) => {
-    if (err) {
-      return res.status(403).json({ success: false, message: 'Token không hợp lệ hoặc đã hết hạn!' });
+    const authHeader = req.headers.authorization || '';
+    const match = authHeader.match(/^Bearer\s+(.+)$/i);
+    if (!match) {
+        return res.status(401).json({ success: false, message: 'Vui lòng đăng nhập để tiếp tục.' });
     }
-    req.user = user; // Lưu thông tin payload (username, role) vào request
-    next();
-  });
+
+    jwt.verify(match[1], JWT_SECRET, (err, payload) => {
+        if (err || !payload || typeof payload.username !== 'string') {
+            return res.status(401).json({ success: false, message: 'Phiên đăng nhập không hợp lệ hoặc đã hết hạn. Vui lòng đăng nhập lại.' });
+        }
+        req.user = { username: payload.username };
+        next();
+    });
 };
 
-// --- 4. KHỞI TẠO ADMIN MẶC ĐỊNH ---
-async function initDefaultAdmin() {
+const requireAdmin = async (req, res, next) => {
     try {
-        const existingAdmin = await User.findOne({ username: 'admin' });
+        const user = await User.findOne({ username: req.user.username }).select('username role fullname');
+        if (!user || user.role !== 'admin') {
+            return res.status(403).json({ success: false, message: 'Bạn không có quyền thực hiện chức năng quản trị.' });
+        }
+        req.authUser = user;
+        next();
+    } catch (error) {
+        console.error('Lỗi kiểm tra quyền quản trị:', error);
+        res.status(500).json({ success: false, message: 'Không thể xác minh quyền truy cập.' });
+    }
+};
+
+// --- 4. KHỞI TẠO ADMIN (CHỈ KHI ĐÃ CẤU HÌNH BẰNG BIẾN MÔI TRƯỜNG) ---
+async function initDefaultAdmin() {
+    const adminUsername = process.env.ADMIN_USERNAME;
+    const adminPassword = process.env.ADMIN_PASSWORD;
+    if (!adminUsername || !adminPassword) {
+        console.log('ℹ️ Bỏ qua tạo Admin mặc định: hãy tạo tài khoản quản trị an toàn hoặc cấu hình ADMIN_USERNAME/ADMIN_PASSWORD.');
+        return;
+    }
+
+    try {
+        const safeUsername = adminUsername.trim().toLowerCase();
+        const existingAdmin = await User.findOne({ username: safeUsername });
         if (!existingAdmin) {
-            const hash = await bcrypt.hash('admin123', 10);
+            const passwordHash = await bcrypt.hash(adminPassword, 12);
             await User.create({
-                username: 'admin',
+                username: safeUsername,
                 fullname: 'Administrator',
-                passwordHash: hash,
+                passwordHash,
                 role: 'admin'
             });
-            console.log('👑 Đã tạo tài khoản Admin mặc định (user: admin / pass: admin123)');
+            console.log('👑 Đã tạo tài khoản quản trị từ biến môi trường.');
         }
-    } catch (e) {
-        console.error('Lỗi khi khởi tạo Admin mặc định:', e);
+    } catch (error) {
+        console.error('Lỗi khi khởi tạo Admin:', error);
     }
 }
 
@@ -242,24 +267,37 @@ app.put('/api/change-password', verifyToken, async (req, res) => {
 });
 
 // Quản lý đề thi
-app.get('/api/exams', async (req, res) => {
+// Học viên chỉ nhận nội dung câu hỏi; đáp án chỉ được trả về cho Admin.
+app.get('/api/exams', verifyToken, async (req, res) => {
     try {
         const { subject, grade } = req.query;
-        let filter = {};
+        const filter = {};
         if (subject) filter.subject = subject;
         if (grade) filter.grade = grade;
 
-        const exams = await Exam.find(filter).sort({ createdAt: -1 });
+        const isAdmin = await User.exists({ username: req.user.username, role: 'admin' });
+        const docs = await Exam.find(filter).sort({ createdAt: -1 }).lean();
+        const exams = docs.map(exam => {
+            if (!isAdmin) {
+                exam.questions = (exam.questions || []).map(question => {
+                    const { answer, ...publicQuestion } = question || {};
+                    return publicQuestion;
+                });
+            }
+            return exam;
+        });
         res.json({ success: true, exams });
-    } catch (e) {
-        res.status(500).json({ success: false, message: e.message });
+    } catch (error) {
+        console.error('Lỗi tải đề thi:', error);
+        res.status(500).json({ success: false, message: 'Không thể tải danh sách đề thi.' });
     }
 });
 
-app.post('/api/exams', async (req, res) => {
+app.post('/api/exams', verifyToken, requireAdmin, async (req, res) => {
     try {
-        const { examCode, title, subject, grade, timeLimit, questions } = req.body;
-        if (!examCode || !subject || !grade || !questions || questions.length === 0) {
+        const { examCode, title, subject, grade, timeLimit, questions } = req.body || {};
+        if (typeof examCode !== 'string' || !examCode.trim() || !subject || !grade ||
+            !Array.isArray(questions) || questions.length === 0) {
             return res.status(400).json({ success: false, message: 'Vui lòng điền đủ thông tin và tạo ít nhất 1 câu hỏi!' });
         }
 
@@ -269,67 +307,105 @@ app.post('/api/exams', async (req, res) => {
             return res.status(409).json({ success: false, message: 'Mã đề thi này đã tồn tại!' });
         }
 
+        const sanitizedQuestions = questions.map(question => ({
+            question: String(question.question || '').trim(),
+            options: Array.isArray(question.options) ? question.options.slice(0, 4).map(option => String(option)) : [],
+            answer: String(question.answer || '').toUpperCase()
+        }));
+        const invalidQuestion = sanitizedQuestions.some(question =>
+            !question.question || question.options.length !== 4 ||
+            question.options.some(option => !option.trim()) ||
+            !['A', 'B', 'C', 'D'].includes(question.answer)
+        );
+        if (invalidQuestion) {
+            return res.status(400).json({ success: false, message: 'Mỗi câu hỏi phải có nội dung, đủ 4 lựa chọn và đáp án A/B/C/D hợp lệ.' });
+        }
+
         const newExam = await Exam.create({
             examCode: safeCode,
             title: title || `Đề thi ${subject} - ${grade}`,
             subject,
             grade,
-            timeLimit: Number(timeLimit) || 30,
-            questions
+            timeLimit: Math.max(1, Math.min(240, Number(timeLimit) || 30)),
+            questions: sanitizedQuestions
         });
-
-        res.json({ success: true, message: 'Thêm đề thi mới thành công!', exam: newExam });
-    } catch (e) {
-        res.status(500).json({ success: false, message: e.message });
+        res.status(201).json({ success: true, message: 'Thêm đề thi mới thành công!', exam: newExam });
+    } catch (error) {
+        console.error('Lỗi tạo đề thi:', error);
+        res.status(500).json({ success: false, message: 'Không thể tạo đề thi.' });
     }
 });
 
-app.delete('/api/exams/:examCode', async (req, res) => {
+app.delete('/api/exams/:examCode', verifyToken, requireAdmin, async (req, res) => {
     try {
-        const { examCode } = req.params;
-        await Exam.deleteOne({ examCode });
+        const result = await Exam.deleteOne({ examCode: String(req.params.examCode).toUpperCase() });
+        if (!result.deletedCount) return res.status(404).json({ success: false, message: 'Không tìm thấy đề thi.' });
         res.json({ success: true, message: 'Đã xóa đề thi thành công!' });
-    } catch (e) {
-        res.status(500).json({ success: false, message: e.message });
+    } catch (error) {
+        console.error('Lỗi xóa đề thi:', error);
+        res.status(500).json({ success: false, message: 'Không thể xóa đề thi.' });
     }
 });
 
 // Lịch sử thi & Kết quả
-app.post('/api/results', async (req, res) => {
+// Điểm được chấm trên máy chủ; không nhận username/điểm do trình duyệt tự khai báo.
+app.post('/api/results', verifyToken, async (req, res) => {
     try {
-        const { username, examCode, examTitle, subject, grade, score, correctCount, totalQuestions } = req.body;
-        if (!username || !examCode) {
-            return res.status(400).json({ success: false, message: 'Thiếu thông tin kết quả bài thi!' });
+        const { examCode, answers } = req.body || {};
+        if (typeof examCode !== 'string' || !examCode.trim() || !answers || typeof answers !== 'object' || Array.isArray(answers)) {
+            return res.status(400).json({ success: false, message: 'Dữ liệu nộp bài không hợp lệ.' });
         }
 
-        const user = await User.findOne({ username });
-        const newHistory = await History.create({
-            username,
-            fullname: user ? user.fullname : username,
-            examCode,
-            examTitle: examTitle || `Đề thi ${examCode}`,
-            subject: subject || 'Toán',
-            grade: grade || 'Lớp 1',
-            correctCount: Number(correctCount) || 0,
-            totalQuestions: Number(totalQuestions) || 0,
-            score: Number(score) || 0,
+        const user = await User.findOne({ username: req.user.username }).select('username fullname');
+        if (!user) return res.status(401).json({ success: false, message: 'Tài khoản không còn tồn tại. Vui lòng đăng nhập lại.' });
+
+        const exam = await Exam.findOne({ examCode: examCode.trim().toUpperCase() }).lean();
+        if (!exam) return res.status(404).json({ success: false, message: 'Không tìm thấy đề thi.' });
+        const questions = Array.isArray(exam.questions) ? exam.questions : [];
+        if (!questions.length) return res.status(400).json({ success: false, message: 'Đề thi chưa có câu hỏi.' });
+
+        let correctCount = 0;
+        questions.forEach((question, index) => {
+            if (String(answers[index] || '').toUpperCase() === String(question.answer || '').toUpperCase()) correctCount++;
+        });
+        const totalQuestions = questions.length;
+        const score = Number(((correctCount / totalQuestions) * 10).toFixed(2));
+
+        const history = await History.create({
+            username: user.username,
+            fullname: user.fullname || user.username,
+            examCode: exam.examCode,
+            examTitle: exam.title || `Đề thi ${exam.examCode}`,
+            subject: exam.subject || '',
+            grade: exam.grade || '',
+            correctCount,
+            totalQuestions,
+            score,
             time: new Date().toLocaleTimeString('vi-VN')
         });
-
-        res.json({ success: true, message: 'Đã lưu lịch sử thi thành công!', history: newHistory });
-    } catch (e) {
-        res.status(500).json({ success: false, message: e.message });
+        res.status(201).json({
+            success: true,
+            message: 'Đã chấm và lưu kết quả bài thi.',
+            result: { correctCount, totalQuestions, score },
+            historyId: history.id
+        });
+    } catch (error) {
+        console.error('Lỗi chấm/lưu kết quả:', error);
+        res.status(500).json({ success: false, message: 'Không thể chấm hoặc lưu kết quả bài thi.' });
     }
 });
 
-app.get('/api/results', async (req, res) => {
+app.get('/api/results', verifyToken, async (req, res) => {
     try {
-        const { username, search } = req.query;
-        let filter = {};
+        const isAdmin = await User.exists({ username: req.user.username, role: 'admin' });
+        const { search } = req.query;
+        const filter = {};
 
-        if (username) filter.username = username;
-        if (search) {
-            const regex = new RegExp(search, 'i');
+        if (!isAdmin) {
+            filter.username = req.user.username;
+        } else if (search) {
+            const escapedSearch = String(search).slice(0, 100).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const regex = new RegExp(escapedSearch, 'i');
             filter.$or = [
                 { username: regex },
                 { fullname: regex },
@@ -338,14 +414,15 @@ app.get('/api/results', async (req, res) => {
             ];
         }
 
-        const results = await History.find(filter).sort({ createdAt: -1 });
+        const results = await History.find(filter).sort({ createdAt: -1 }).limit(isAdmin ? 500 : 100).lean();
         res.json({ success: true, results });
-    } catch (e) {
-        res.status(500).json({ success: false, message: e.message });
+    } catch (error) {
+        console.error('Lỗi tải kết quả:', error);
+        res.status(500).json({ success: false, message: 'Không thể tải lịch sử thi.' });
     }
 });
 
-app.get('/api/leaderboard', async (req, res) => {
+app.get('/api/leaderboard', verifyToken, async (req, res) => {
     try {
         const { examCode } = req.query;
         let filter = {};
@@ -362,7 +439,7 @@ app.get('/api/leaderboard', async (req, res) => {
 });
 
 // Thống kê Dashboard Admin
-app.get('/api/admin/stats', async (req, res) => {
+app.get('/api/admin/stats', verifyToken, requireAdmin, async (req, res) => {
     try {
         const totalStudents = await User.countDocuments({ role: 'student' });
         const totalExams = await Exam.countDocuments({});

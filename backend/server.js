@@ -209,6 +209,14 @@ app.post('/api/login', async (req, res) => {
             return res.status(401).json({ success: false, message: 'Mật khẩu đăng nhập không chính xác!' });
         }
 
+        // Chặn tài khoản quản trị cũ nếu vẫn dùng mật khẩu mặc định đã biết.
+        if (user.role === 'admin' && await bcrypt.compare('admin123', user.passwordHash)) {
+            return res.status(403).json({
+                success: false,
+                message: 'Tài khoản quản trị vẫn dùng mật khẩu mặc định. Hãy đặt ADMIN_USERNAME và ADMIN_PASSWORD an toàn trong Render Environment rồi triển khai lại.'
+            });
+        }
+
         const token = jwt.sign({ username: user.username, role: user.role }, JWT_SECRET, { expiresIn: '7d' });
         console.log(`[LOGIN:${requestId}] Đăng nhập thành công, role=${user.role}; ${Date.now() - startedAt}ms`);
         return res.json({

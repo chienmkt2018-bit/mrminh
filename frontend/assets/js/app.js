@@ -1163,12 +1163,17 @@ async function handleLoginSubmit(e) {
         submitButton.textContent = 'Đang đăng nhập...';
     }
 
+    let loginTimeoutId;
     try {
+        const controller = new AbortController();
+        loginTimeoutId = setTimeout(() => controller.abort(), 15000);
         const response = await fetch(`${API_URL}/login`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username, password })
+            body: JSON.stringify({ username, password }),
+            signal: controller.signal
         });
+        clearTimeout(loginTimeoutId);
         const data = await response.json();
 
         if (!response.ok || !data.success) {
@@ -1207,8 +1212,12 @@ async function handleLoginSubmit(e) {
         }
     } catch (err) {
         console.error('Lỗi đăng nhập:', err);
-        showNotification(msgBox, 'Không thể kết nối hoặc phản hồi từ Backend không hợp lệ. Hãy thử lại.', 'error');
+        const message = err?.name === 'AbortError'
+            ? 'Máy chủ xác thực phản hồi quá lâu (15 giây). Hãy kiểm tra Render Logs và thử lại.'
+            : 'Không thể kết nối hoặc phản hồi từ Backend không hợp lệ. Hãy thử lại.';
+        showNotification(msgBox, message, 'error');
     } finally {
+        if (loginTimeoutId) clearTimeout(loginTimeoutId);
         const button = document.querySelector('#login-form button[type="submit"]');
         if (button) {
             button.disabled = false;

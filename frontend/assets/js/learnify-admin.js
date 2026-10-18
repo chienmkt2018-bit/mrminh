@@ -44,7 +44,8 @@
       const button = tabStrip.querySelector('#' + id);
       if (!button) return;
       button.classList.add('learnify-nav-button');
-      button.innerHTML = '<i class="fa-solid fa-' + icon + '" aria-hidden="true"></i><span>' + label + '</span>';
+      button.textContent = label;
+      button.dataset.icon = icon;
       button.setAttribute('aria-label', label);
       nav.appendChild(button);
     });
@@ -59,7 +60,7 @@
       TAB_META.forEach(([id]) => {
         const button = document.getElementById(id);
         if (!button) return;
-        const active = button.classList.contains('bg-blue-600');
+        const active = button.classList.contains('bg-blue-600') || button.classList.contains('is-active');
         button.classList.toggle('is-active', active);
         button.setAttribute('aria-current', active ? 'page' : 'false');
       });

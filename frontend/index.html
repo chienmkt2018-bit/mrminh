@@ -56,5 +56,48 @@
     <script type="module" src="./assets/js/theme.js"></script>
     <script type="module" src="./assets/js/app.js"></script>
     <script src="./assets/js/learnify-admin.js"></script>
+    <script>
+      // Fallback diagnostics: prevent an endless loading spinner if the app module
+      // fails to load or initialize. Keep this independent of app.js.
+      (() => {
+        let appScriptFailed = false;
+        window.addEventListener('error', (event) => {
+          const target = event.target;
+          if (target && target.tagName === 'SCRIPT' &&
+              /assets\/js\/(app|theme)\.js/.test(target.src || '')) {
+            appScriptFailed = true;
+            showStartupError('Không tải được tệp JavaScript: ' + target.src);
+          } else if (event.message) {
+            console.error('Lỗi JavaScript:', event.message, event.filename, event.lineno);
+          }
+        }, true);
+
+        window.addEventListener('unhandledrejection', (event) => {
+          console.error('Lỗi Promise chưa được xử lý:', event.reason);
+        });
+
+        function showStartupError(detail) {
+          const appView = document.getElementById('app-view');
+          if (!appView || !appView.querySelector('.loading-state')) return;
+          appView.innerHTML = `
+            <section style="max-width:640px;margin:48px auto;padding:24px;border:1px solid #fca5a5;border-radius:16px;background:#fff;color:#111827;font-family:system-ui,sans-serif">
+              <h2 style="font-size:20px;font-weight:700;color:#b91c1c">Ứng dụng chưa khởi động được</h2>
+              <p style="margin-top:8px">Trang đã tải nhưng JavaScript chưa khởi tạo giao diện. Hãy tải lại trang; nếu lỗi tiếp tục, gửi thông tin bên dưới cho người hỗ trợ.</p>
+              <pre style="white-space:pre-wrap;overflow-wrap:anywhere;margin-top:12px;padding:12px;background:#f3f4f6;border-radius:8px;font-size:12px"></pre>
+              <button id="startup-retry" type="button" style="margin-top:16px;padding:10px 16px;border-radius:8px;background:#2563eb;color:white;font-weight:600">Tải lại trang</button>
+            </section>`;
+          const pre = appView.querySelector('pre');
+          if (pre) pre.textContent = detail || (appScriptFailed ? 'Tệp JavaScript không tải được.' : 'Quá thời gian chờ khởi tạo (8 giây). Kiểm tra Console và tab Mạng.');
+          document.getElementById('startup-retry')?.addEventListener('click', () => location.reload());
+        }
+
+        window.setTimeout(() => {
+          const appView = document.getElementById('app-view');
+          if (appView && appView.querySelector('.loading-state')) {
+            showStartupError('Quá thời gian chờ khởi tạo (8 giây). JavaScript có thể bị lỗi khi tải hoặc thực thi. Mở DevTools > Console/Mạng để xem chi tiết.');
+          }
+        }, 8000);
+      })();
+    </script>
 </body>
 </html>

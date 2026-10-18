@@ -169,6 +169,7 @@ app.post('/api/login', async (req, res) => {
         const isMatch = await bcrypt.compare(String(password), user.passwordHash);
         console.log(`[LOGIN:${requestId}] Kiểm tra mật khẩu hoàn tất; ${Date.now() - startedAt}ms`);
         if (!isMatch) {
+            console.warn(`[LOGIN:${requestId}] Mật khẩu không khớp; ${Date.now() - startedAt}ms`);
             return res.status(401).json({ success: false, message: 'Mật khẩu đăng nhập không chính xác!' });
         }
 

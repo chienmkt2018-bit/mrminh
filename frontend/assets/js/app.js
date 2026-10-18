@@ -1173,8 +1173,10 @@ async function handleLoginSubmit(e) {
             body: JSON.stringify({ username, password }),
             signal: controller.signal
         });
-        clearTimeout(loginTimeoutId);
+        // Keep the timeout active until the response body is fully read.
+        // fetch() can resolve at headers while response.json() is still pending.
         const data = await response.json();
+        clearTimeout(loginTimeoutId);
 
         if (!response.ok || !data.success) {
             showNotification(msgBox, data.message || 'Sai tên đăng nhập hoặc mật khẩu!', 'error');

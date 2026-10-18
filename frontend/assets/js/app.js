@@ -4,15 +4,81 @@ export const API_URL = window.location.hostname === 'localhost' || window.locati
     ? 'http://localhost:3000/api'
     : '/api';
 
-let currentUser = JSON.parse(localStorage.getItem('currentUser')) || null;
-let currentAuthToken = localStorage.getItem('token') || null;
+// Đọc phiên đăng nhập an toàn: dữ liệu localStorage lỗi không được phép chặn toàn bộ ứng dụng.
+function readStoredValue(key) {
+    try {
+        return window.localStorage.getItem(key);
+    } catch (error) {
+        console.warn(`Không thể đọc localStorage (${key}):`, error);
+        return null;
+    }
+}
+
+function clearStoredAuth() {
+    try {
+        window.localStorage.removeItem('currentUser');
+        window.localStorage.removeItem('token');
+    } catch (error) {
+        console.warn('Không thể xóa phiên đăng nhập đã lưu:', error);
+    }
+}
+
+function readCurrentUser() {
+    const rawUser = readStoredValue('currentUser');
+    if (!rawUser) return null;
+
+    try {
+        const user = JSON.parse(rawUser);
+        if (!user || typeof user !== 'object' || Array.isArray(user) ||
+            typeof user.username !== 'string' || !user.username.trim()) {
+            throw new Error('Dữ liệu currentUser không đúng định dạng.');
+        }
+        return user;
+    } catch (error) {
+        console.warn('Phiên đăng nhập đã lưu không hợp lệ; quay về màn hình đăng nhập.', error);
+        clearStoredAuth();
+        return null;
+    }
+}
+
+let currentUser = readCurrentUser();
+let currentAuthToken = readStoredValue('token');
 
 let tempQuestions = [];
 let studentExamsCache = [];
 
-document.addEventListener('DOMContentLoaded', () => {
-    renderAppView();
-});
+function startApplicationSafely() {
+    try {
+        renderAppView();
+    } catch (error) {
+        console.error('Không thể khởi tạo giao diện ứng dụng:', error);
+        const appView = document.getElementById('app-view');
+        if (!appView) return;
+
+        appView.innerHTML = `
+            <section class="max-w-xl mx-auto mt-10 rounded-2xl border border-red-200 bg-white p-6 text-center shadow-sm">
+                <h2 class="text-lg font-bold text-red-700">Không thể tải giao diện</h2>
+                <p class="mt-2 text-sm text-gray-600">Ứng dụng gặp lỗi khi khởi tạo. Bạn có thể tải lại hoặc xóa phiên đăng nhập đã lưu để thử lại.</p>
+                <div class="mt-5 flex flex-wrap justify-center gap-3">
+                    <button id="app-reload-button" type="button" class="rounded-lg bg-blue-600 px-4 py-2 font-semibold text-white">Tải lại</button>
+                    <button id="app-reset-session-button" type="button" class="rounded-lg border border-gray-300 px-4 py-2 font-semibold text-gray-700">Xóa phiên đăng nhập</button>
+                </div>
+            </section>
+        `;
+
+        document.getElementById('app-reload-button')?.addEventListener('click', () => window.location.reload());
+        document.getElementById('app-reset-session-button')?.addEventListener('click', () => {
+            clearStoredAuth();
+            window.location.reload();
+        });
+    }
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', startApplicationSafely, { once: true });
+} else {
+    startApplicationSafely();
+}
 
 export function renderAppView() {
     const appView = document.getElementById('app-view');

@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="vi" class="light">
 <head>
@@ -6,109 +5,56 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#f5f7fb">
     <title>Học học nữa học mãi</title>
-
-    <script>
-        tailwind = {
-            config: {
-                darkMode: 'class'
-            }
-        };
-    </script>
+    <script>tailwind = { config: { darkMode: 'class' } };</script>
     <script src="https://cdn.tailwindcss.com"></script>
-
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-
-    <link rel="stylesheet"
-          href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-
     <link rel="stylesheet" href="./assets/css/custom.css">
-
+    <link rel="stylesheet" href="./assets/css/learnify-admin.css">
     <script>
-        try {
-            const theme = localStorage.getItem('edusystem-theme');
-            const preferredDark = window.matchMedia(
-                '(prefers-color-scheme: dark)'
-            ).matches;
-
-            document.documentElement.classList.toggle(
-                'dark',
-                theme ? theme === 'dark' : preferredDark
-            );
-        } catch (error) {
-            // Nếu trình duyệt chặn localStorage, vẫn tải được giao diện.
-        }
+      try {
+        const theme = localStorage.getItem('edusystem-theme');
+        const preferredDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        document.documentElement.classList.toggle('dark', theme ? theme === 'dark' : preferredDark);
+      } catch (error) {}
     </script>
 </head>
-
 <body class="min-h-screen flex flex-col">
-
     <header class="site-header">
         <a href="/" class="brand">
-            <span class="brand-mark">
-                <i class="fa-solid fa-graduation-cap"></i>
-            </span>
-
+            <span class="brand-mark"><i class="fa-solid fa-graduation-cap"></i></span>
             <span class="brand-copy">
                 <span class="brand-title">Học học nữa học mãi</span>
-                <span class="brand-subtitle">
-                    Nền tảng học tập và kiểm tra trực tuyến
-                </span>
+                <span class="brand-subtitle">Nền tảng học tập và kiểm tra trực tuyến</span>
             </span>
         </a>
-
         <div class="header-actions">
-            <span class="header-status">
-                <span class="status-dot"></span>
-                Không gian học tập
-            </span>
-
-            <button
-                id="theme-toggle"
-                class="theme-toggle"
-                type="button"
-                aria-label="Chuyển giao diện sáng tối"
-                title="Chuyển giao diện sáng tối"
-            >
-                <i id="theme-toggle-icon" class="fa-solid fa-moon"></i>
-                <span class="theme-toggle-label">Giao diện</span>
+            <span class="header-status"><span class="status-dot"></span>Không gian học tập</span>
+            <button id="theme-toggle" class="theme-toggle" type="button" aria-label="Chuyển giao diện sáng tối" title="Chuyển giao diện sáng tối">
+                <i id="theme-toggle-icon" class="fa-solid fa-moon"></i><span class="theme-toggle-label">Giao diện</span>
             </button>
-
-            <!-- app.js hiện tại vẫn sử dụng phần tử này -->
             <div id="user-info" class="text-sm font-medium"></div>
         </div>
     </header>
-
     <main class="site-main flex-grow max-w-7xl mx-auto w-full">
         <div id="app-view">
             <div class="loading-state">
-                <span class="loading-icon">
-                    <i class="fa-solid fa-spinner fa-spin"></i>
-                </span>
-
+                <span class="loading-icon"><i class="fa-solid fa-spinner fa-spin"></i></span>
                 <p class="loading-title">Đang tải ứng dụng</p>
-                <p class="loading-subtitle">
-                    Vui lòng chờ trong giây lát...
-                </p>
+                <p class="loading-subtitle">Vui lòng chờ trong giây lát...</p>
             </div>
         </div>
     </main>
-
     <footer class="site-footer">
-        <span>
-            © <span id="current-year"></span>
-            Học học nữa học mãi
-        </span>
-
+        <span>© <span id="current-year"></span> Học học nữa học mãi</span>
         <span>Học tập mỗi ngày, tiến bộ từng bước.</span>
     </footer>
-
     <script type="module" src="./assets/js/theme.js"></script>
     <script type="module" src="./assets/js/app.js"></script>
-
+    <script src="./assets/js/learnify-admin.js"></script>
 </body>
 </html>

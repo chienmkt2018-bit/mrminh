@@ -61,6 +61,7 @@
         const button = document.getElementById(id);
         if (!button) return;
         const active = button.classList.contains('bg-blue-600') || button.classList.contains('is-active');
+        button.classList.add('learnify-nav-button');
         button.classList.toggle('is-active', active);
         button.setAttribute('aria-current', active ? 'page' : 'false');
       });

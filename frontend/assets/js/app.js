@@ -4,81 +4,15 @@ export const API_URL = window.location.hostname === 'localhost' || window.locati
     ? 'http://localhost:3000/api'
     : '/api';
 
-// Đọc phiên đăng nhập an toàn: dữ liệu localStorage lỗi không được phép chặn toàn bộ ứng dụng.
-function readStoredValue(key) {
-    try {
-        return window.localStorage.getItem(key);
-    } catch (error) {
-        console.warn(`Không thể đọc localStorage (${key}):`, error);
-        return null;
-    }
-}
-
-function clearStoredAuth() {
-    try {
-        window.localStorage.removeItem('currentUser');
-        window.localStorage.removeItem('token');
-    } catch (error) {
-        console.warn('Không thể xóa phiên đăng nhập đã lưu:', error);
-    }
-}
-
-function readCurrentUser() {
-    const rawUser = readStoredValue('currentUser');
-    if (!rawUser) return null;
-
-    try {
-        const user = JSON.parse(rawUser);
-        if (!user || typeof user !== 'object' || Array.isArray(user) ||
-            typeof user.username !== 'string' || !user.username.trim()) {
-            throw new Error('Dữ liệu currentUser không đúng định dạng.');
-        }
-        return user;
-    } catch (error) {
-        console.warn('Phiên đăng nhập đã lưu không hợp lệ; quay về màn hình đăng nhập.', error);
-        clearStoredAuth();
-        return null;
-    }
-}
-
-let currentUser = readCurrentUser();
-let currentAuthToken = readStoredValue('token');
+let currentUser = JSON.parse(localStorage.getItem('currentUser')) || null;
+let currentAuthToken = localStorage.getItem('token') || null;
 
 let tempQuestions = [];
 let studentExamsCache = [];
 
-function startApplicationSafely() {
-    try {
-        renderAppView();
-    } catch (error) {
-        console.error('Không thể khởi tạo giao diện ứng dụng:', error);
-        const appView = document.getElementById('app-view');
-        if (!appView) return;
-
-        appView.innerHTML = `
-            <section class="max-w-xl mx-auto mt-10 rounded-2xl border border-red-200 bg-white p-6 text-center shadow-sm">
-                <h2 class="text-lg font-bold text-red-700">Không thể tải giao diện</h2>
-                <p class="mt-2 text-sm text-gray-600">Ứng dụng gặp lỗi khi khởi tạo. Bạn có thể tải lại hoặc xóa phiên đăng nhập đã lưu để thử lại.</p>
-                <div class="mt-5 flex flex-wrap justify-center gap-3">
-                    <button id="app-reload-button" type="button" class="rounded-lg bg-blue-600 px-4 py-2 font-semibold text-white">Tải lại</button>
-                    <button id="app-reset-session-button" type="button" class="rounded-lg border border-gray-300 px-4 py-2 font-semibold text-gray-700">Xóa phiên đăng nhập</button>
-                </div>
-            </section>
-        `;
-
-        document.getElementById('app-reload-button')?.addEventListener('click', () => window.location.reload());
-        document.getElementById('app-reset-session-button')?.addEventListener('click', () => {
-            clearStoredAuth();
-            window.location.reload();
-        });
-    }
-}
-
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', startApplicationSafely, { once: true });
-} else {
-    startApplicationSafely();
-}
+document.addEventListener('DOMContentLoaded', () => {
+    renderAppView();
+});
 
 export function renderAppView() {
     const appView = document.getElementById('app-view');
@@ -365,18 +299,8 @@ async function loadAdminStatsTab() {
     `;
 
     try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 12000);
-        let res;
-        try {
-            res = await fetch(`${API_URL}/admin/stats`, { signal: controller.signal });
-        } finally {
-            clearTimeout(timeoutId);
-        }
+        const res = await fetch(`${API_URL}/admin/stats`);
         const data = await res.json();
-        if (!res.ok || !data.success) {
-            throw new Error(data.message || `Máy chủ trả về HTTP ${res.status}`);
-        }
         if (data.success) {
             const { totalStudents, totalExams, totalAttempts, averageScore, topStudents, attemptsBySubject, examsBySubject } = data.stats;
 
@@ -464,19 +388,6 @@ async function loadAdminStatsTab() {
         }
     } catch (err) {
         console.error('Lỗi khi tải thống kê admin:', err);
-        const container = document.getElementById('admin-main-content');
-        if (container) {
-            const existingError = document.getElementById('admin-stats-error');
-            if (!existingError) {
-                container.insertAdjacentHTML('beforeend', `
-                    <div id="admin-stats-error" role="alert" class="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
-                        <b>Không tải được số liệu quản trị.</b>
-                        <p class="mt-1">${String(err?.name === 'AbortError' ? 'Máy chủ phản hồi quá lâu (12 giây).' : (err?.message || err)).replace(/[&<>]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[ch]))}</p>
-                        <button id="retry-admin-stats" type="button" class="mt-3 rounded-lg bg-amber-700 px-3 py-2 font-semibold text-white">Thử tải lại thống kê</button>
-                    </div>`);
-                document.getElementById('retry-admin-stats')?.addEventListener('click', loadAdminStatsTab);
-            }
-        }
     }
 }
 
@@ -1150,97 +1061,27 @@ function renderResultScreen(exam, userAnswers, correctCount, score, totalQuestio
 
 async function handleLoginSubmit(e) {
     e.preventDefault();
-    const usernameInput = document.getElementById('username');
-    const passwordInput = document.getElementById('password');
+    const username = document.getElementById('username').value.trim();
+    const password = document.getElementById('password').value;
     const msgBox = document.getElementById('auth-message');
-    if (!usernameInput || !passwordInput) return;
-
-    const username = usernameInput.value.trim();
-    const password = passwordInput.value;
-    const submitButton = document.querySelector('#login-form button[type="submit"]');
-    if (submitButton) {
-        submitButton.disabled = true;
-        submitButton.textContent = 'Đang đăng nhập...';
-    }
-
-    let loginTimeoutId;
     try {
-        const controller = new AbortController();
-        // Race the complete request (including JSON parsing) against a rejecting
-        // timeout. Some browser/network failures do not reliably settle fetch()
-        // after abort(), so abort alone is not enough to release the login UI.
-        const timeoutPromise = new Promise((_, reject) => {
-            loginTimeoutId = setTimeout(() => {
-                controller.abort();
-                const timeoutError = new Error('Đăng nhập quá thời gian chờ.');
-                timeoutError.name = 'TimeoutError';
-                reject(timeoutError);
-            }, 15000);
-        });
-        const requestPromise = fetch(`${API_URL}/login`, {
+        const response = await fetch(`${API_URL}/login`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username, password }),
-            signal: controller.signal
-        }).then(async response => ({ response, data: await response.json() }));
-
-        const { response, data } = await Promise.race([requestPromise, timeoutPromise]);
-        clearTimeout(loginTimeoutId);
-
-        if (!response.ok || !data.success) {
-            showNotification(msgBox, data.message || 'Sai tên đăng nhập hoặc mật khẩu!', 'error');
-            return;
-        }
-
-        const role = String(data.role || 'student').trim().toLowerCase();
-        currentUser = {
-            username: data.username || username,
-            fullname: data.fullname || data.username || username,
-            role: role === 'admin' ? 'admin' : 'student'
-        };
-        currentAuthToken = data.token || '';
-
-        // Do not let blocked/full browser storage prevent a successful login
-        // from switching away from the login form.
-        try {
-            window.localStorage.setItem('currentUser', JSON.stringify(currentUser));
-            if (currentAuthToken) window.localStorage.setItem('token', currentAuthToken);
-            else window.localStorage.removeItem('token');
-        } catch (storageError) {
-            console.warn('Đăng nhập thành công nhưng không thể lưu phiên vào localStorage:', storageError);
-        }
-
-        try {
+            body: JSON.stringify({ username, password })
+        });
+        const data = await response.json();
+        if (data.success) {
+            currentUser = { username: data.username, fullname: data.fullname, role: data.role };
+            currentAuthToken = data.token;
+            localStorage.setItem('currentUser', JSON.stringify(currentUser));
+            localStorage.setItem('token', currentAuthToken);
             renderAppView();
-        } catch (renderError) {
-            console.error('Lỗi dựng giao diện sau đăng nhập:', renderError);
-            const appView = document.getElementById('app-view');
-            if (appView) {
-                appView.innerHTML = `
-                    <section class="max-w-2xl mx-auto mt-8 rounded-2xl border border-red-300 bg-white dark:bg-gray-800 p-6 shadow">
-                        <h2 class="text-lg font-bold text-red-600">Đăng nhập thành công nhưng không tải được giao diện</h2>
-                        <p class="mt-2 text-sm">Tài khoản: <b>${currentUser.username}</b> · Vai trò: <b>${currentUser.role}</b></p>
-                        <pre class="mt-3 overflow-auto whitespace-pre-wrap rounded bg-gray-100 dark:bg-gray-900 p-3 text-xs">${String(renderError?.stack || renderError?.message || renderError).replace(/[&<>]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[ch]))}</pre>
-                        <button id="admin-render-retry" class="mt-4 rounded-lg bg-blue-600 px-4 py-2 font-semibold text-white">Thử tải lại giao diện</button>
-                        <button id="admin-render-logout" class="mt-4 ml-2 rounded-lg border px-4 py-2">Đăng xuất</button>
-                    </section>`;
-                document.getElementById('admin-render-retry')?.addEventListener('click', () => window.location.reload());
-                document.getElementById('admin-render-logout')?.addEventListener('click', handleLogout);
-            }
+        } else {
+            showNotification(msgBox, data.message || 'Sai tên đăng nhập hoặc mật khẩu!', 'error');
         }
     } catch (err) {
-        console.error('Lỗi đăng nhập:', err);
-        const message = (err?.name === 'AbortError' || err?.name === 'TimeoutError')
-            ? 'Đăng nhập quá thời gian chờ (15 giây). Giao diện đã được mở khóa; hãy thử lại và kiểm tra kết nối máy chủ.'
-            : 'Không thể kết nối hoặc phản hồi từ Backend không hợp lệ. Hãy thử lại.';
-        showNotification(msgBox, message, 'error');
-    } finally {
-        if (loginTimeoutId) clearTimeout(loginTimeoutId);
-        const button = document.querySelector('#login-form button[type="submit"]');
-        if (button) {
-            button.disabled = false;
-            button.textContent = 'Đăng Nhập';
-        }
+        showNotification(msgBox, 'Không thể kết nối đến Backend!', 'error');
     }
 }
 

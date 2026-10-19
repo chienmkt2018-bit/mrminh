@@ -3,257 +3,159 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Học học nữa học mãi - Nền tảng học tập thông minh</title>
+    <meta name="theme-color" content="#f5f7fb">
+    <title>Học học nữa học mãi</title>
+    <script>tailwind = { config: { darkMode: 'class' } };</script>
+    <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-    <!-- Tailwind CSS CDN -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    fontFamily: {
-                        sans: ['Be Vietnam Pro', 'Inter', 'system-ui', 'sans-serif'],
-                    },
-                    colors: {
-                        primary: {
-                            50: '#eff6ff',
-                            100: '#dbeafe',
-                            500: '#3b82f6',
-                            600: '#2563eb',
-                            700: '#1d4ed8',
-                            800: '#1e40af',
-                        }
-                    },
-                    boxShadow: {
-                        'soft': '0 2px 24px rgba(0,0,0,0.06)',
-                        'soft-lg': '0 8px 32px rgba(0,0,0,0.08)',
-                    }
-                }
-            }
-        }
-    </script>
-    <!-- Font Awesome -->
+    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Chart.js & SheetJS giữ nguyên cho Admin -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <style>
-        * { -webkit-font-smoothing: antialiased; }
-        ::-webkit-scrollbar { width: 6px; height: 6px; }
-        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 999px; }
-        .dark ::-webkit-scrollbar-thumb { background: #334155; }
-        .glass { backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); }
-    </style>
+    <link rel="stylesheet" href="./assets/css/custom.css">
+    <link rel="stylesheet" href="./assets/css/learnify-admin.css">
     <script>
-        // Chống nháy theme khi load
-        (function() {
-            const saved = localStorage.getItem('hhnm-theme');
-            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-            const theme = saved || (prefersDark ? 'dark' : 'light');
-            document.documentElement.classList.remove('light','dark');
-            document.documentElement.classList.add(theme);
-        })();
+      try {
+        const theme = localStorage.getItem('edusystem-theme');
+        const preferredDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        document.documentElement.classList.toggle('dark', theme ? theme === 'dark' : preferredDark);
+      } catch (error) {}
     </script>
 </head>
-<body class="bg-[#eef2ff] dark:bg-[#0f172a] text-slate-800 dark:text-slate-100 min-h-screen font-sans transition-colors duration-300 selection:bg-primary-100 selection:text-primary-700">
-    <!-- App Shell -->
-    <div class="min-h-screen flex">
-        <!-- Sidebar - Desktop -->
-        <aside id="sidebar" class="hidden lg:flex w-[300px] shrink-0 p-4 pr-0 flex-col gap-4 sticky top-0 h-screen">
-            <div class="bg-[#1a56db] dark:bg-[#1e40af] rounded-[24px] flex flex-col h-full p-4 shadow-soft-lg text-white relative overflow-hidden">
-                <!-- Decorative -->
-                <div class="absolute -top-20 -right-20 w-64 h-64 bg-white/10 rounded-full blur-2xl pointer-events-none"></div>
-                
-                <!-- Logo -->
-                <div class="flex items-center justify-between mb-6 px-2 pt-2">
-                    <div class="flex items-center gap-2.5 font-bold text-[16px] tracking-tight">
-                        <span class="w-8 h-8 rounded-lg bg-white text-[#1a56db] grid place-items-center"><i class="fa-solid fa-graduation-cap text-sm"></i></span>
-                        <span>Học Mãi</span>
-                        <span class="text-[10px] font-medium bg-white/20 px-2 py-0.5 rounded-full">PRO</span>
-                    </div>
-                    <button id="collapse-btn" class="w-7 h-7 rounded-lg bg-white/10 hover:bg-white/20 grid place-items-center transition"><i class="fa-solid fa-table-columns text-xs"></i></button>
-                </div>
-                <!-- Nav - app.js sẽ hook vào data-route -->
-                <nav class="flex-1 space-y-1.5">
-                    <a data-route="dashboard" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl bg-white text-[#1a56db] font-semibold text-[13.5px] shadow-sm transition">
-                        <i class="fa-solid fa-border-all w-5 text-center"></i> Tổng quan
-                    </a>
-                    <a data-route="my-courses" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-white/10 text-white/90 font-medium text-[13.5px] transition">
-                        <i class="fa-regular fa-circle-user w-5 text-center"></i> Khóa học của tôi
-                    </a>
-                    <a data-route="live" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-white/10 text-white/80 font-medium text-[13.5px] transition">
-                        <i class="fa-solid fa-podcast w-5 text-center"></i> Lớp học trực tiếp
-                    </a>
-                    <a data-route="assignments" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-white/10 text-white/80 font-medium text-[13.5px] transition">
-                        <i class="fa-regular fa-file-lines w-5 text-center"></i> Bài tập
-                    </a>
-                    <a data-route="exam" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-white/10 text-white/80 font-medium text-[13.5px] transition">
-                        <i class="fa-solid fa-shield-halved w-5 text-center"></i> Phòng thi
-                    </a>
-                    <a data-route="certificates" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-white/10 text-white/80 font-medium text-[13.5px] transition">
-                        <i class="fa-regular fa-star w-5 text-center"></i> Chứng chỉ
-                    </a>
-                    <a data-route="progress" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-white/10 text-white/80 font-medium text-[13.5px] transition">
-                        <i class="fa-solid fa-chart-line w-5 text-center"></i> Tiến độ
-                    </a>
-                    <a data-route="admin" class="nav-item admin-only hidden flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-white/10 text-amber-200 font-medium text-[13.5px] transition border border-amber-200/20">
-                        <i class="fa-solid fa-crown w-5 text-center"></i> Quản trị
-                    </a>
-                </nav>
-                <!-- Premium Card -->
-                <div class="bg-white rounded-[18px] p-4 text-slate-900 mt-4">
-                    <div class="text-center">
-                        <div class="w-10 h-10 rounded-full bg-blue-50 text-blue-600 grid place-items-center mx-auto mb-2"><i class="fa-solid fa-bolt"></i></div>
-                        <h4 class="font-bold text-[14px] leading-tight">Mở khóa Premium</h4>
-                        <p class="text-[11.5px] text-slate-500 mt-1 leading-snug">Nâng cấp để học không giới hạn & thi thử đề VIP</p>
-                        <button class="mt-3 w-full h-9 rounded-full bg-[#1a56db] text-white text-[13px] font-semibold hover:bg-blue-700 transition">Nâng cấp ngay</button>
-                    </div>
-                </div>
-                <div class="mt-4 space-y-1 text-[13px] text-white/70 px-2">
-                    <button class="flex items-center gap-2.5 w-full py-2 hover:text-white transition"><i class="fa-solid fa-gear w-4"></i> Cài đặt</button>
-                    <button id="logout-btn" class="flex items-center gap-2.5 w-full py-2 hover:text-white transition"><i class="fa-solid fa-right-from-bracket w-4"></i> Đăng xuất</button>
-                </div>
-            </div>
-        </aside>
-        <!-- Main Column -->
-        <div class="flex-1 min-w-0 flex flex-col">
-            <!-- Top Header -->
-            <header class="sticky top-0 z-30 px-4 lg:px-6 py-4">
-                <div class="max-w-[1440px] mx-auto flex items-center gap-3">
-                    <!-- Mobile menu -->
-                    <button id="mobile-menu-btn" class="lg:hidden w-10 h-10 rounded-full bg-white dark:bg-slate-800 shadow-soft grid place-items-center"><i class="fa-solid fa-bars"></i></button>
-                    
-                    <!-- Search Bar - Global -->
-                    <div class="flex-1 max-w-[520px] relative">
-                        <span class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm"><i class="fa-solid fa-magnifying-glass"></i></span>
-                        <input id="global-search" type="text" placeholder="Tìm khóa học, bài giảng, đề thi..." class="w-full h-11 pl-11 pr-4 rounded-full bg-white dark:bg-slate-800 shadow-soft text-[13.5px] outline-none focus:ring-2 focus:ring-primary-500/20 border border-slate-100 dark:border-slate-700 placeholder:text-slate-400">
-                    </div>
-                    <div class="ml-auto flex items-center gap-2">
-                        <!-- Theme Toggle -->
-                        <button id="theme-toggle" class="w-10 h-10 rounded-full bg-white dark:bg-slate-800 shadow-soft grid place-items-center text-slate-600 dark:text-slate-300 hover:scale-105 transition" title="Chuyển sáng/tối">
-                            <i class="fa-regular fa-moon dark:hidden"></i>
-                            <i class="fa-regular fa-sun hidden dark:block"></i>
-                        </button>
-                        <button class="w-10 h-10 rounded-full bg-white dark:bg-slate-800 shadow-soft grid place-items-center text-slate-600 dark:text-slate-300 relative">
-                            <i class="fa-regular fa-bell"></i>
-                            <span class="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-                        </button>
-                        <div class="h-6 w-px bg-slate-200 dark:bg-slate-700 mx-1 hidden sm:block"></div>
-                        <!-- User Info - ID bắt buộc giữ lại cho app.js -->
-                        <div id="user-info" class="flex items-center gap-2 bg-white dark:bg-slate-800 shadow-soft rounded-full pl-2 pr-3 py-1 text-[13px] font-medium">
-                            <!-- app.js sẽ render avatar + tên vào đây -->
-                            <span class="w-7 h-7 rounded-full bg-slate-200 dark:bg-slate-600 grid place-items-center text-xs">?</span>
-                            <span class="hidden sm:inline text-slate-500">Chưa đăng nhập</span>
-                        </div>
-                    </div>
-                </div>
-            </header>
-            <!-- Content -->
-            <main class="flex-1 px-4 lg:px-6 pb-8">
-                <div class="max-w-[1440px] mx-auto">
-                    <!-- Breadcrumb / Page Title Container -->
-                    <div id="page-meta" class="mb-4 hidden"></div>
-                    <!-- App View - ID bắt buộc -->
-                    <div id="app-view" class="min-h-[60vh]">
-                        <!-- Skeleton Loading hiện đại -->
-                        <div class="grid grid-cols-12 gap-5 animate-pulse">
-                            <div class="col-span-12 h-48 rounded-[20px] bg-white dark:bg-slate-800 shadow-soft"></div>
-                            <div class="col-span-12 md:col-span-8 h-64 rounded-[20px] bg-white dark:bg-slate-800 shadow-soft"></div>
-                            <div class="col-span-12 md:col-span-4 h-64 rounded-[20px] bg-white dark:bg-slate-800 shadow-soft"></div>
-                        </div>
-                        <div class="text-center py-16 text-slate-400 text-sm">
-                            <i class="fa-solid fa-spinner fa-spin text-xl mb-3"></i><br>Đang tải ứng dụng...
-                        </div>
-                    </div>
-                </div>
-            </main>
-            <footer class="px-6 py-6 text-center text-[12px] text-slate-400 dark:text-slate-500">
-                © 2026 Học học nữa học mãi • Made with <i class="fa-solid fa-heart text-red-400"></i> cho giáo dục Việt Nam • v2.0 Professional
-            </footer>
+<body class="min-h-screen flex flex-col">
+    <header class="site-header">
+        <a href="/" class="brand">
+            <span class="brand-mark"><i class="fa-solid fa-graduation-cap"></i></span>
+            <span class="brand-copy">
+                <span class="brand-title">Học học nữa học mãi</span>
+                <span class="brand-subtitle">Nền tảng học tập và kiểm tra trực tuyến</span>
+            </span>
+        </a>
+        <div class="header-actions">
+            <span class="header-status"><span class="status-dot"></span>Không gian học tập</span>
+            <button id="theme-toggle" class="theme-toggle" type="button" aria-label="Chuyển giao diện sáng tối" title="Chuyển giao diện sáng tối">
+                <i id="theme-toggle-icon" class="fa-solid fa-moon"></i><span class="theme-toggle-label">Giao diện</span>
+            </button>
+            <div id="user-info" class="text-sm font-medium"></div>
         </div>
-    </div>
-    <!-- Mobile Sidebar Drawer -->
-    <div id="mobile-drawer" class="fixed inset-0 z-40 hidden">
-        <div id="drawer-backdrop" class="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
-        <div class="absolute left-0 top-0 h-full w-[300px] p-4">
-            <div class="bg-[#1a56db] rounded-[24px] h-full p-4 text-white flex flex-col">
-                <div class="flex justify-between items-center mb-6 px-2"><span class="font-bold">Học Mãi</span><button id="close-drawer" class="w-8 h-8 rounded-full bg-white/10 grid place-items-center"><i class="fa-solid fa-xmark"></i></button></div>
-                <div id="mobile-nav-clone"></div>
+    </header>
+    <main class="site-main flex-grow max-w-7xl mx-auto w-full">
+        <div id="app-view">
+            <div class="loading-state">
+                <span class="loading-icon"><i class="fa-solid fa-spinner fa-spin"></i></span>
+                <p class="loading-title">Đang tải ứng dụng</p>
+                <p class="loading-subtitle">Vui lòng chờ trong giây lát...</p>
             </div>
         </div>
-    </div>
-    <!-- Toast Container -->
-    <div id="toast-container" class="fixed bottom-6 right-6 z-50 space-y-2"></div>
-    <!-- ES Module App - GIỮ NGUYÊN ĐƯỜNG DẪN -->
-    <script type="module" src="./assets/js/app.js"></script>
-    <!-- Theme + UI Logic -->
+    </main>
+    <footer class="site-footer">
+        <span>© <span id="current-year"></span> Học học nữa học mãi</span>
+        <span>Học tập mỗi ngày, tiến bộ từng bước.</span>
+    </footer>
+    <script type="module" src="./assets/js/theme.js"></script>
+    <script type="module" src="./assets/js/app.js?v=20261018-admin-login-fix-6"></script>
+    <script src="./assets/js/learnify-admin.js?v=20261018-admin-login-fix-3"></script>
     <script>
-        const html = document.documentElement;
-        const themeBtn = document.getElementById('theme-toggle');
-        themeBtn?.addEventListener('click', () => {
-            const isDark = html.classList.contains('dark');
-            html.classList.remove('light','dark');
-            html.classList.add(isDark ? 'light' : 'dark');
-            localStorage.setItem('hhnm-theme', isDark ? 'light' : 'dark');
-        });
-        // Mobile drawer
-        const drawer = document.getElementById('mobile-drawer');
-        const openDrawer = () => {
-            document.getElementById('mobile-nav-clone').innerHTML = document.querySelector('#sidebar nav').innerHTML;
-            drawer.classList.remove('hidden');
+      // Startup watchdog: show a visible recovery panel for script errors,
+      // rejected promises, missing app initialization, or an empty app root.
+      (() => {
+        let appStarted = false;
+        let lastProblem = 'Ứng dụng chưa hoàn tất khởi tạo.';
+        const appView = () => document.getElementById('app-view');
+        const hasAppContent = () => {
+          const root = appView();
+          return !!root && !!root.children.length && !root.querySelector('.loading-state');
         };
-        const closeDrawer = () => drawer.classList.add('hidden');
-        document.getElementById('mobile-menu-btn')?.addEventListener('click', openDrawer);
-        document.getElementById('close-drawer')?.addEventListener('click', closeDrawer);
-        document.getElementById('drawer-backdrop')?.addEventListener('click', closeDrawer);
-        // Delegation cho nav-item -> kích hoạt event cho app.js
-        document.addEventListener('click', (e) => {
-            const link = e.target.closest('[data-route]');
-            if (!link) return;
-            e.preventDefault();
-            const route = link.dataset.route;
-            // Đóng drawer
-            closeDrawer();
-            // Highlight active
-            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('bg-white','text-[#1a56db]','shadow-sm'));
-            link.classList.add('bg-white','text-[#1a56db]','shadow-sm');
-            // Phát event cho app.js bắt
-            window.dispatchEvent(new CustomEvent('hhnm:navigate', { detail: { route } }));
-            // Nếu app.js dùng hash router
-            if (route === 'dashboard') location.hash = '#/';
-            else location.hash = '#/' + route;
+
+        function showStartupError(detail) {
+          const root = appView();
+          if (!root || hasAppContent()) return;
+          root.innerHTML = `
+            <section style="max-width:680px;margin:32px auto;padding:24px;border:1px solid #fca5a5;border-radius:16px;background:#fff;color:#111827;font-family:system-ui,sans-serif;box-shadow:0 10px 30px rgba(0,0,0,.08)">
+              <h2 style="font-size:20px;font-weight:700;color:#b91c1c">Ứng dụng chưa khởi động được</h2>
+              <p style="margin-top:8px;line-height:1.6">Đã phát hiện trang chưa hiển thị giao diện. Bạn có thể thử tải lại hoặc xóa phiên đăng nhập lưu trên trình duyệt.</p>
+              <pre id="startup-error-detail" style="white-space:pre-wrap;overflow-wrap:anywhere;margin-top:12px;padding:12px;background:#f3f4f6;border-radius:8px;font-size:12px"></pre>
+              <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:16px">
+                <button id="startup-retry" type="button" style="padding:10px 16px;border-radius:8px;background:#2563eb;color:white;font-weight:600;cursor:pointer">Tải lại trang</button>
+                <button id="startup-reset" type="button" style="padding:10px 16px;border-radius:8px;background:#fff;border:1px solid #d1d5db;color:#111827;font-weight:600;cursor:pointer">Xóa phiên đăng nhập</button>
+              </div>
+            </section>`;
+          const pre = document.getElementById('startup-error-detail');
+          if (pre) pre.textContent = detail || lastProblem;
+          document.getElementById('startup-retry')?.addEventListener('click', () => location.reload());
+          document.getElementById('startup-reset')?.addEventListener('click', () => {
+            try {
+              localStorage.removeItem('currentUser');
+              localStorage.removeItem('token');
+            } catch (error) {
+              console.warn('Không thể xóa phiên đăng nhập:', error);
+            }
+            location.reload();
+          });
+        }
+
+        window.addEventListener('error', (event) => {
+          if (event.target && event.target.tagName === 'SCRIPT') {
+            lastProblem = 'Không tải được tệp JavaScript: ' + (event.target.src || '(script nội bộ)');
+          } else {
+            lastProblem = 'Lỗi JavaScript: ' + (event.message || 'Không rõ chi tiết') +
+              (event.filename ? '\\nTệp: ' + event.filename : '') +
+              (event.lineno ? '\\nDòng: ' + event.lineno : '');
+          }
+          console.error(lastProblem, event.error || '');
+          showStartupError(lastProblem);
+        }, true);
+
+        window.addEventListener('unhandledrejection', (event) => {
+          lastProblem = 'Lỗi Promise: ' + String(event.reason?.stack || event.reason || 'Không rõ chi tiết');
+          console.error(lastProblem);
+          showStartupError(lastProblem);
         });
-        // Hiển thị admin link nếu user là admin - app.js có thể tự thêm class
-        window.addEventListener('hhnm:userLoaded', (e) => {
-            const role = e.detail?.role;
-            if (role === 'admin') document.querySelectorAll('.admin-only').forEach(el => el.classList.remove('hidden'));
-        });
-        // Toast helper toàn cục để app.js dùng
-        window.showToast = (msg, type='info') => {
-            const c = document.getElementById('toast-container');
-            const el = document.createElement('div');
-            el.className = `px-4 py-3 rounded-xl shadow-soft-lg bg-white dark:bg-slate-800 text-[13px] flex items-center gap-2 border ${type==='error'?'border-red-200 text-red-700':'border-slate-100 dark:border-slate-700'}`;
-            el.innerHTML = `<i class="fa-solid ${type==='error'?'fa-circle-exclamation text-red-500':'fa-circle-check text-green-500'}"></i> <span>${msg}</span>`;
-            c.appendChild(el);
-            setTimeout(()=>el.remove(), 4000);
-        };
+
+        document.addEventListener('app:started', () => { appStarted = true; });
+
+        window.setTimeout(() => {
+          const root = appView();
+          if (!root) {
+            lastProblem = 'Không tìm thấy phần tử #app-view trong HTML.';
+            showStartupError(lastProblem);
+            return;
+          }
+          if (!appStarted && !hasAppContent()) {
+            lastProblem = 'Quá thời gian chờ 8 giây. app.js chưa dựng giao diện hoặc đã để vùng ứng dụng trống. Kiểm tra tải tệp JavaScript và lỗi khởi tạo.';
+            showStartupError(lastProblem);
+          }
+        }, 8000);
+      })();
     </script>
-    <!-- CSS tùy chỉnh cho nội dung do app.js render - để đồng bộ với design mới -->
-    <style id="hhnm-override">
-        /* Các card do app.js render sẽ tự đẹp hơn */
-        #app-view .card, #app-view [class*="bg-white"] {
-            border-radius: 20px !important;
-        }
-        #app-view button, #app-view .btn {
-            border-radius: 9999px !important;
-        }
-        /* Phòng thi - chống copy khi làm bài */
-        .exam-mode {
-            user-select: none;
-        }
-    </style>
+
+    <script>
+      // Emergency UI watchdog: independently release a login button if the
+      // module's submit handler never settles. This also helps distinguish a
+      // stalled frontend request from a normal login error.
+      (() => {
+        let loginWatchdog = null;
+        document.addEventListener('submit', (event) => {
+          const form = event.target;
+          if (!form || form.id !== 'login-form') return;
+          if (loginWatchdog) window.clearTimeout(loginWatchdog);
+          const startedAt = Date.now();
+          loginWatchdog = window.setTimeout(() => {
+            const button = document.querySelector('#login-form button[type="submit"]');
+            if (!button || !button.textContent.includes('Đang đăng nhập')) return;
+            button.disabled = false;
+            button.textContent = 'Đăng Nhập';
+            const message = document.getElementById('auth-message');
+            if (message) {
+              message.className = 'mb-4 p-3 rounded-xl text-xs sm:text-sm bg-red-100 text-red-700';
+              message.textContent = 'Yêu cầu đăng nhập bị treo quá 20 giây. Nút đã được mở khóa. Hãy tải lại trang và thử lại; nếu tiếp diễn, cần kiểm tra phiên bản JavaScript đang được Render phục vụ.';
+            }
+            console.error('[LOGIN-WATCHDOG] Submit handler vẫn chưa kết thúc sau', Date.now() - startedAt, 'ms.');
+          }, 20000);
+        }, true);
+      })();
+    </script>
+
 </body>
 </html>
